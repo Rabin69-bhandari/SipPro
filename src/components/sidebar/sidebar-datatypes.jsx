@@ -28,20 +28,9 @@ const navItems = [
 
   {
     title: "Skill Verification",
-    href: "/skills",
+    href: "/assesstments",
     icon: ShieldCheck,
-    subitems: [
-      {
-        title: "My Skills",
-        href: "/skills",
-        icon: BrainCircuit,
-      },
-      {
-        title: "Assessments",
-        href: "/skills/assessments",
-        icon: ShieldCheck,
-      },
-    ],
+    
   },
 
   {

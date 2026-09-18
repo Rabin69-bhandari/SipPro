@@ -6,11 +6,16 @@ import {
   useState,
 } from "react"
 
-import { Mic, MicOff } from "lucide-react"
+import {
+  Mic,
+  MicOff,
+  PhoneOff,
+} from "lucide-react"
+
 import { Lottie } from "lottie-react"
 
 import vapi from "@/lib/vapi/vapi"
-import { configureAssistant } from "@/lib/utils"
+import { configureAssistant2 } from "@/lib/utils"
 
 import sounds from "@/constant/sounds.json"
 
@@ -25,15 +30,15 @@ const CallStatus = {
 }
 
 
-export default function VoiceTutor({
-  roadmap,
-  selectedTopic,
-
-  sessionActive,
-  setSessionActive,
-
-  onTopicCompleted,
+export default function InterviewVoice({
+  title,
+  topics,
+  roadmapId,
 }) {
+
+  // ==========================================
+  // STATE
+  // ==========================================
 
   const [callStatus, setCallStatus] =
     useState(CallStatus.INACTIVE)
@@ -44,19 +49,22 @@ export default function VoiceTutor({
   const [isSpeaking, setIsSpeaking] =
     useState(false)
 
-  const [savingProgress, setSavingProgress] =
-    useState(false)
+  const [error, setError] =
+    useState(null)
 
+
+  // ==========================================
+  // REFS
+  // ==========================================
 
   const lottieRef = useRef(null)
 
-  // Freeze the topic belonging to the current call
-  const activeTopicRef = useRef(null)
+  const transcriptRef = useRef([])
 
 
-  // =============================================
+  // ==========================================
   // LOTTIE
-  // =============================================
+  // ==========================================
 
   useEffect(() => {
 
@@ -69,74 +77,9 @@ export default function VoiceTutor({
   }, [isSpeaking])
 
 
-  // =============================================
-  // SAVE PROGRESS
-  // =============================================
-
-  const saveTopicProgress = async (topic) => {
-
-    if (!topic || !roadmap?.id) return
-
-    try {
-
-      setSavingProgress(true)
-
-      const response = await fetch(
-        `/api/roadmaps/${roadmap.id}/progress`,
-        {
-          method: "POST",
-
-          headers: {
-            "Content-Type": "application/json",
-          },
-
-          body: JSON.stringify({
-            topicId: topic.id,
-          }),
-        }
-      )
-
-
-      const result = await response.json()
-
-
-      if (!response.ok) {
-        throw new Error(
-          result.error ||
-          "Failed to save topic progress"
-        )
-      }
-
-
-      onTopicCompleted?.({
-        topicId: topic.id,
-        progress: result.progress,
-      })
-
-
-      console.log(
-        "Topic progress saved:",
-        result
-      )
-
-    } catch (error) {
-
-      console.error(
-        "Failed to save progress:",
-        error
-      )
-
-    } finally {
-
-      setSavingProgress(false)
-
-    }
-  }
-
-
-  // =============================================
+  // ==========================================
   // VAPI EVENTS
-  // =============================================
+  // ==========================================
 
   useEffect(() => {
 
@@ -146,100 +89,110 @@ export default function VoiceTutor({
         CallStatus.ACTIVE
       )
 
-      setSessionActive(true)
-
       setIsMuted(false)
+      setError(null)
 
-      console.log(
-        "Vapi call started"
-      )
     }
 
 
-    const onCallEnd = async () => {
-
-      console.log(
-        "Vapi call ended"
-      )
-
-
-      const completedTopic =
-        activeTopicRef.current
-
-
-      // UI state
+    const onCallEnd = () => {
 
       setCallStatus(
         CallStatus.FINISH
       )
 
-      setSessionActive(false)
-
       setIsSpeaking(false)
-
       setIsMuted(false)
 
 
-      // Save topic progress
+      // ======================================
+      // NEXT STEP
+      //
+      // transcriptRef.current contains
+      // the full interview conversation.
+      //
+      // We will send it to:
+      //
+      // POST /api/interviews/evaluate
+      //
+      // ======================================
 
-      if (completedTopic) {
 
-        await saveTopicProgress(
-          completedTopic
+      setTimeout(() => {
+
+        setCallStatus(
+          CallStatus.INACTIVE
         )
 
-      }
+      }, 1000)
 
-
-      activeTopicRef.current = null
-
-
-      // Return to ready state
-
-      setCallStatus(
-        CallStatus.INACTIVE
-      )
     }
 
 
     const onMessage = (message) => {
 
-      console.log(
-        "Vapi message:",
-        message
-      )
+      // We only want completed transcript
+      // messages, not partial speech.
+
+      if (
+        message.type === "transcript" &&
+        message.transcriptType === "final"
+      ) {
+
+        const transcriptItem = {
+
+          role:
+            message.role,
+
+          text:
+            message.transcript,
+
+        }
+
+
+        transcriptRef.current = [
+          ...transcriptRef.current,
+          transcriptItem,
+        ]
+
+      }
 
     }
 
 
-    const onError = (error) => {
+    const onError = () => {
 
-      console.error(
-        "Vapi error:",
-        error
+      setError(
+        "Something went wrong with the interview. Please try again."
       )
 
       setCallStatus(
         CallStatus.INACTIVE
       )
 
-      setSessionActive(false)
-
       setIsSpeaking(false)
+      setIsMuted(false)
 
-      activeTopicRef.current = null
     }
 
 
     const onSpeechStart = () => {
+
       setIsSpeaking(true)
+
     }
 
 
     const onSpeechEnd = () => {
+
       setIsSpeaking(false)
+
     }
 
+
+    // ========================================
+    // REGISTER EVENTS
+    // ========================================
 
     vapi.on(
       "call-start",
@@ -271,6 +224,10 @@ export default function VoiceTutor({
       onSpeechEnd
     )
 
+
+    // ========================================
+    // CLEANUP
+    // ========================================
 
     return () => {
 
@@ -306,113 +263,95 @@ export default function VoiceTutor({
 
     }
 
-  }, [
-    roadmap?.id,
-    setSessionActive,
-  ])
+  }, [])
 
 
-  // =============================================
-  // START CALL
-  // =============================================
+  // ==========================================
+  // START INTERVIEW
+  // ==========================================
 
   const handleCall = async () => {
 
-    if (!selectedTopic) return
-
-
-    // Freeze topic for this session
-
-    activeTopicRef.current = {
-      ...selectedTopic,
-    }
-
-
-    const assistantOverrides = {
-
-      variableValues: {
-
-        // Career context
-        career:
-          roadmap?.careerGoal?.title ||
-          roadmap?.title,
-
-        experience:
-          roadmap?.careerGoal?.experience ||
-          "Not specified",
-
-        goal:
-          roadmap?.careerGoal?.goal ||
-          "Learn this topic",
-
-
-        // Lesson context
-        subject:
-          roadmap?.title,
-
-        topic:
-          selectedTopic.title,
-
-        topicDescription:
-          selectedTopic.description,
-
-        duration:
-          `${selectedTopic.estimatedMinutes} minutes`,
-
-        style: "friendly",
-      },
-
-
-      clientMessages: [
-        "transcript",
-      ],
-
-      serverMessages: [],
-    }
-
-
     try {
+
+      setError(null)
 
       setCallStatus(
         CallStatus.CONNECTING
       )
 
 
+      // Clear old interview transcript
+
+      transcriptRef.current = []
+
+
+      // ======================================
+      // DYNAMIC INTERVIEW INFORMATION
+      // ======================================
+
+      const assistantOverrides = {
+
+        variableValues: {
+
+          career:
+            title ||
+            "Career",
+
+          topics:
+            topics?.length
+              ? topics.join(", ")
+              : "General career knowledge",
+
+        },
+
+
+        clientMessages: [
+          "transcript",
+        ],
+
+        serverMessages: [],
+
+      }
+
+
+      // ======================================
+      // START VAPI
+      // ======================================
+
       await vapi.start(
 
-        configureAssistant(
+        configureAssistant2(
           "female",
           "friendly"
         ),
 
         assistantOverrides
-      )
 
+      )
 
     } catch (error) {
 
-      console.error(
-        "Failed to start call:",
-        error
+      setError(
+        "Unable to start the interview. Please check your microphone and try again."
       )
-
-
-      activeTopicRef.current = null
 
       setCallStatus(
         CallStatus.INACTIVE
       )
 
-      setSessionActive(false)
+      setIsSpeaking(false)
+
     }
+
   }
 
 
-  // =============================================
-  // END CALL
-  // =============================================
+  // ==========================================
+  // END INTERVIEW
+  // ==========================================
 
-  const handleDisCall = () => {
+  const handleEndCall = () => {
 
     if (
       callStatus !==
@@ -422,19 +361,28 @@ export default function VoiceTutor({
     }
 
 
-    vapi.stop()
-
     setCallStatus(
       CallStatus.FINISH
     )
+
+    vapi.stop()
+
   }
 
 
-  // =============================================
+  // ==========================================
   // MICROPHONE
-  // =============================================
+  // ==========================================
 
   const toggleMicrophone = () => {
+
+    if (
+      callStatus !==
+      CallStatus.ACTIVE
+    ) {
+      return
+    }
+
 
     const muted =
       vapi.isMuted()
@@ -448,30 +396,13 @@ export default function VoiceTutor({
     setIsMuted(
       !muted
     )
+
   }
 
 
-  // =============================================
-  // NO TOPIC
-  // =============================================
-
-  if (!selectedTopic) {
-
-    return (
-      <div className="flex min-h-125 items-center justify-center rounded-2xl border border-border bg-card">
-
-        <p className="text-sm text-muted-foreground">
-          Select a topic to begin.
-        </p>
-
-      </div>
-    )
-  }
-
-
-  // =============================================
+  // ==========================================
   // UI
-  // =============================================
+  // ==========================================
 
   return (
 
@@ -491,17 +422,17 @@ export default function VoiceTutor({
             <div>
 
               <p className="text-sm font-medium text-muted-foreground">
-                AI Learning Session
+                AI Interview Session
               </p>
 
               <h1 className="mt-1 text-xl font-semibold tracking-tight">
-                Your Voice Tutor
+                Your AI Interviewer
               </h1>
 
             </div>
 
 
-            {/* Status */}
+            {/* STATUS */}
 
             <div className="flex items-center gap-2 rounded-full border border-border px-3 py-1.5 text-xs">
 
@@ -550,15 +481,15 @@ export default function VoiceTutor({
 
 
         {/* ================================= */}
-        {/* VISUALIZER */}
+        {/* VOICE VISUALIZER */}
         {/* ================================= */}
 
-        <div className="flex flex-col items-center justify-center px-6 py-8">
+        <div className="flex flex-col items-center justify-center px-6 py-10">
 
           <div className="relative flex size-52 items-center justify-center">
 
 
-            {/* Glow */}
+            {/* GLOW */}
 
             {isSpeaking && (
 
@@ -573,21 +504,24 @@ export default function VoiceTutor({
             )}
 
 
-            {/* Lottie */}
+            {/* LOTTIE */}
 
             <div
               className={`
-                relative z-10 flex size-36
+                relative z-10
+                flex size-36
                 items-center justify-center
-                overflow-hidden rounded-full
-                border bg-background shadow-lg
-                transition-all duration-500
+                overflow-hidden
+                rounded-full
+                border
+                bg-background
+                shadow-lg
+                transition-all
+                duration-500
 
                 ${
                   isSpeaking
-
                     ? "scale-110 border-primary/40"
-
                     : "scale-100"
                 }
               `}
@@ -606,7 +540,9 @@ export default function VoiceTutor({
           </div>
 
 
-          {/* Status text */}
+          {/* ================================= */}
+          {/* VOICE STATE */}
+          {/* ================================= */}
 
           <div className="mt-2 text-center">
 
@@ -615,34 +551,45 @@ export default function VoiceTutor({
               {callStatus ===
               CallStatus.CONNECTING
 
-                ? "Connecting to your tutor..."
+                ? "Connecting to your interviewer..."
 
-                : isSpeaking
+                : callStatus ===
+                    CallStatus.FINISH
 
-                  ? "Your tutor is speaking"
+                  ? "Finishing interview..."
 
-                  : callStatus ===
-                      CallStatus.ACTIVE
+                  : isSpeaking
 
-                    ? "Listening..."
+                    ? "Interviewer is speaking"
 
-                    : savingProgress
+                    : callStatus ===
+                        CallStatus.ACTIVE
 
-                      ? "Saving your progress..."
+                      ? isMuted
+                        ? "Microphone muted"
+                        : "Listening to your answer..."
 
-                      : "Ready to learn"}
+                      : "Ready for your interview"}
 
             </h2>
 
 
-            <p className="mt-1 text-sm text-muted-foreground">
+            <p className="mt-1 max-w-md text-sm text-muted-foreground">
 
               {callStatus ===
               CallStatus.ACTIVE
 
-                ? "Speak naturally. Your tutor is listening."
+                ? isSpeaking
 
-                : "Start a session to begin your lesson."}
+                  ? "Listen carefully to the question."
+
+                  : isMuted
+
+                    ? "Unmute your microphone when you're ready to answer."
+
+                    : "Answer naturally and explain your reasoning."
+
+                : "Start the session when you're ready to begin."}
 
             </p>
 
@@ -652,52 +599,61 @@ export default function VoiceTutor({
 
 
         {/* ================================= */}
-        {/* LESSON INFO */}
+        {/* INTERVIEW INFO */}
         {/* ================================= */}
 
-        <div className="grid grid-cols-3 gap-3 border-y border-border bg-muted/30 p-4">
+        <div className="grid gap-3 border-y border-border bg-muted/30 p-4 sm:grid-cols-2">
 
 
-          <div className="rounded-xl bg-background p-3">
+          {/* CAREER */}
+
+          <div className="rounded-xl bg-background p-4">
 
             <p className="text-xs uppercase tracking-wide text-muted-foreground">
-              Career
+              Interview
             </p>
 
             <p className="mt-1 truncate text-sm font-semibold">
-              {roadmap?.careerGoal?.title ||
-                roadmap?.title}
+              {title}
             </p>
 
           </div>
 
 
-          <div className="rounded-xl bg-background p-3">
+          {/* TOPICS */}
+
+          <div className="rounded-xl bg-background p-4">
 
             <p className="text-xs uppercase tracking-wide text-muted-foreground">
-              Topic
+              Topics
             </p>
 
             <p className="mt-1 truncate text-sm font-semibold">
-              {selectedTopic.title}
-            </p>
 
-          </div>
+              {topics?.length
+                ? `${topics.length} learning topics`
+                : "General"}
 
-
-          <div className="rounded-xl bg-background p-3">
-
-            <p className="text-xs uppercase tracking-wide text-muted-foreground">
-              Duration
-            </p>
-
-            <p className="mt-1 text-sm font-semibold">
-              {selectedTopic.estimatedMinutes} min
             </p>
 
           </div>
 
         </div>
+
+
+        {/* ================================= */}
+        {/* ERROR */}
+        {/* ================================= */}
+
+        {error && (
+
+          <div className="mx-6 mt-5 rounded-xl border border-destructive/20 bg-destructive/5 p-4 text-sm text-destructive">
+
+            {error}
+
+          </div>
+
+        )}
 
 
         {/* ================================= */}
@@ -706,25 +662,25 @@ export default function VoiceTutor({
 
         <div className="flex items-center justify-center gap-3 px-6 py-6">
 
+
+          {/* START / END */}
+
           <Button
             size="lg"
-            className="min-w-40 rounded-xl"
-
+            className="min-w-44 rounded-xl"
             onClick={
               callStatus ===
               CallStatus.ACTIVE
 
-                ? handleDisCall
+                ? handleEndCall
 
                 : handleCall
             }
-
             disabled={
               callStatus ===
                 CallStatus.CONNECTING ||
               callStatus ===
-                CallStatus.FINISH ||
-              savingProgress
+                CallStatus.FINISH
             }
           >
 
@@ -736,28 +692,37 @@ export default function VoiceTutor({
               : callStatus ===
                   CallStatus.ACTIVE
 
-                ? "End Session"
+                ? (
+                  <>
+                    <PhoneOff className="size-4" />
+                    End Interview
+                  </>
+                )
 
                 : callStatus ===
-                    CallStatus.FINISH ||
-                    savingProgress
+                    CallStatus.FINISH
 
                   ? "Finishing..."
 
-                  : "Start Session"}
+                  : (
+                    <>
+                      <Mic className="size-4" />
+                      Start Interview
+                    </>
+                  )}
 
           </Button>
 
+
+          {/* MICROPHONE */}
 
           <Button
             size="lg"
             variant="outline"
             className="size-11 rounded-xl p-0"
-
             onClick={
               toggleMicrophone
             }
-
             disabled={
               callStatus !==
               CallStatus.ACTIVE
@@ -781,5 +746,6 @@ export default function VoiceTutor({
       </div>
 
     </div>
+
   )
 }
