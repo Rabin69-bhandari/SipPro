@@ -1,23 +1,15 @@
-
 import {
   Settings,
-  LogOut,
   Home,
-  Heart,
-  Search,
-  Wallet,
-  CreditCardPlus,
-  BookOpen,
-  GraduationCap,
-  Trophy,
-  Users,
-  MessageCircle,
-  Bell,
-  User,
+  Map,
+  ShieldCheck,
+  Mic,
   BarChart3,
-  Bookmark,
+  FileText,
+  User,
   History,
-  HelpCircle,
+  BrainCircuit,
+  Target,
 } from "lucide-react"
 
 const navItems = [
@@ -28,90 +20,69 @@ const navItems = [
   },
 
   {
-    title: "Learning",
-    href: "/learning",
-    icon: BookOpen,
+    title: "Career Roadmap",
+    href: "/roadmap",
+    icon: Map,
+    
+  },
+
+  {
+    title: "Skill Verification",
+    href: "/skills",
+    icon: ShieldCheck,
     subitems: [
       {
-        title: "Courses",
-        href: "/learning/courses",
-        icon: BookOpen,
+        title: "My Skills",
+        href: "/skills",
+        icon: BrainCircuit,
       },
       {
-        title: "My Learning",
-        href: "/learning/my-learning",
-        icon: GraduationCap,
-      },
-      {
-        title: "Bookmarks",
-        href: "/learning/bookmarks",
-        icon: Bookmark,
+        title: "Assessments",
+        href: "/skills/assessments",
+        icon: ShieldCheck,
       },
     ],
   },
 
   {
-    title: "Favourite",
-    href: "/favourite",
-    icon: Heart,
-  },
-
-  {
-    title: "Search",
-    href: "/search",
-    icon: Search,
-  },
-
-  {
-    title: "Community",
-    href: "/community",
-    icon: Users,
+    title: "AI Interview",
+    href: "/interview",
+    icon: Mic,
     subitems: [
       {
-        title: "Posts",
-        href: "/community/posts",
-        icon: MessageCircle,
+        title: "Practice Interview",
+        href: "/interview/practice",
+        icon: Mic,
       },
       {
-        title: "Competitions",
-        href: "/community/competitions",
-        icon: Trophy,
-      },
-      {
-        title: "Leaderboard",
-        href: "/community/leaderboard",
-        icon: BarChart3,
+        title: "Verified Interview",
+        href: "/interview/verified",
+        icon: ShieldCheck,
       },
     ],
   },
 
   {
-    title: "Payment",
-    href: "/payment",
-    icon: Wallet,
-    subitems: [
-      {
-        title: "eSewa",
-        href: "/payment/esewa",
-        icon: CreditCardPlus,
-      },
-      {
-        title: "Bank",
-        href: "/payment/bank",
-        icon: CreditCardPlus,
-      },
-    ],
+    title: "Career Readiness",
+    href: "/readiness",
+    icon: BarChart3,
   },
 
   {
-    title: "Achievements",
-    href: "/achievements",
-    icon: Trophy,
+    title: "Verified CV",
+    href: "/cv",
+    icon: FileText,
   },
 
   {
-    title: "History",
-    href: "/history",
+    title: "Profile",
+    href: "/profile",
+    icon: User,
+  },
+
+  {
+    title: "Activity",
+    href: "/activity",
     icon: History,
   },
 ]
@@ -122,12 +93,6 @@ const footerItems = [
     href: "/settings",
     icons: <Settings />,
   },
-  {
-    title: "LogOut",
-    href: "/logout",
-    icons: <LogOut />,
-  },
 ]
 
 export { footerItems, navItems }
-

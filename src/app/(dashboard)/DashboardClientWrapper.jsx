@@ -24,7 +24,7 @@ const DashboardClientWrapper = ({ children }) => {
 
             <UserButton />
           </header>
-          <div className='p-10 w-full h-full'>
+          <div className='px-10 py-5 w-full h-full'>
 
           {children}
           </div>
