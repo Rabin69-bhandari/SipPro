@@ -7,12 +7,16 @@ import {
 } from "react"
 
 import {
+  CheckCircle2,
   Mic,
   MicOff,
   PhoneOff,
+  RotateCcw,
+  Sparkles,
 } from "lucide-react"
 
-import { Lottie } from "lottie-react"
+import {Lottie} from "lottie-react"
+import EvaluatingInterview from "./EvaluatingInterview"
 
 import vapi from "@/lib/vapi/vapi"
 import { configureAssistant2 } from "@/lib/utils"
@@ -22,13 +26,23 @@ import sounds from "@/constant/sounds.json"
 import { Button } from "@/components/ui/button"
 
 
+// ==========================================
+// INTERVIEW STATUS
+// ==========================================
+
 const CallStatus = {
   INACTIVE: "INACTIVE",
   CONNECTING: "CONNECTING",
   ACTIVE: "ACTIVE",
   FINISH: "FINISH",
+  EVALUATING: "EVALUATING",
+  COMPLETED: "COMPLETED",
 }
 
+
+// ==========================================
+// COMPONENT
+// ==========================================
 
 export default function InterviewVoice({
   title,
@@ -52,14 +66,45 @@ export default function InterviewVoice({
   const [error, setError] =
     useState(null)
 
+  const [result, setResult] =
+    useState(null)
+
 
   // ==========================================
   // REFS
   // ==========================================
 
-  const lottieRef = useRef(null)
+  const lottieRef =
+    useRef(null)
 
-  const transcriptRef = useRef([])
+  const transcriptRef =
+    useRef([])
+
+  const interviewDataRef =
+    useRef({
+      roadmapId,
+      title,
+      topics,
+    })
+
+
+  // ==========================================
+  // KEEP LATEST PROPS
+  // ==========================================
+
+  useEffect(() => {
+
+    interviewDataRef.current = {
+      roadmapId,
+      title,
+      topics,
+    }
+
+  }, [
+    roadmapId,
+    title,
+    topics,
+  ])
 
 
   // ==========================================
@@ -69,12 +114,141 @@ export default function InterviewVoice({
   useEffect(() => {
 
     if (isSpeaking) {
+
       lottieRef.current?.play()
+
     } else {
+
       lottieRef.current?.stop()
+
     }
 
   }, [isSpeaking])
+
+
+  // ==========================================
+  // EVALUATE INTERVIEW
+  // ==========================================
+
+  const evaluateInterview =
+    async (transcript) => {
+
+      try {
+
+        if (
+          !transcript ||
+          transcript.length === 0
+        ) {
+
+          throw new Error(
+            "No interview transcript was captured."
+          )
+
+        }
+
+
+        setCallStatus(
+          CallStatus.EVALUATING
+        )
+
+        setError(null)
+
+
+        const {
+          roadmapId,
+          title,
+          topics,
+        } = interviewDataRef.current
+
+
+        const response =
+          await fetch(
+            "/api/interviews/evaluate",
+            {
+              method: "POST",
+
+              headers: {
+                "Content-Type":
+                  "application/json",
+              },
+
+              body: JSON.stringify({
+
+                roadmapId,
+
+                title,
+
+                topics,
+
+                transcript,
+
+              }),
+
+            }
+          )
+
+
+        const data =
+          await response.json()
+
+
+        if (!response.ok) {
+
+          throw new Error(
+            data.error ||
+            "Failed to evaluate interview."
+          )
+
+        }
+
+
+        setResult(
+          data.result
+        )
+
+
+        setCallStatus(
+          CallStatus.COMPLETED
+        )
+
+
+      } catch (error) {
+
+        console.error(
+          "Interview evaluation error:",
+          error
+        )
+
+
+        setError(
+          error.message ||
+          "Something went wrong while evaluating your interview."
+        )
+
+
+        setCallStatus(
+          CallStatus.INACTIVE
+        )
+
+      }
+
+    }
+
+
+  // ==========================================
+  // STORE FUNCTION IN REF
+  // ==========================================
+
+  const evaluateRef =
+    useRef(evaluateInterview)
+
+
+  useEffect(() => {
+
+    evaluateRef.current =
+      evaluateInterview
+
+  })
 
 
   // ==========================================
@@ -83,6 +257,10 @@ export default function InterviewVoice({
 
   useEffect(() => {
 
+    // ------------------------------------------
+    // CALL START
+    // ------------------------------------------
+
     const onCallStart = () => {
 
       setCallStatus(
@@ -90,62 +268,80 @@ export default function InterviewVoice({
       )
 
       setIsMuted(false)
+
+      setIsSpeaking(false)
+
       setError(null)
 
     }
 
 
-    const onCallEnd = () => {
+    // ------------------------------------------
+    // CALL END
+    // ------------------------------------------
 
-      setCallStatus(
-        CallStatus.FINISH
-      )
+    const onCallEnd = async () => {
 
       setIsSpeaking(false)
+
       setIsMuted(false)
 
 
-      // ======================================
-      // NEXT STEP
-      //
-      // transcriptRef.current contains
-      // the full interview conversation.
-      //
-      // We will send it to:
-      //
-      // POST /api/interviews/evaluate
-      //
-      // ======================================
+      const transcript =
+        transcriptRef.current
 
 
-      setTimeout(() => {
+      if (
+        !transcript ||
+        transcript.length === 0
+      ) {
+
+        setError(
+          "No interview transcript was captured."
+        )
 
         setCallStatus(
           CallStatus.INACTIVE
         )
 
-      }, 1000)
+        return
+
+      }
+
+
+      await evaluateRef.current(
+        transcript
+      )
 
     }
 
 
-    const onMessage = (message) => {
+    // ------------------------------------------
+    // TRANSCRIPT
+    // ------------------------------------------
 
-      // We only want completed transcript
-      // messages, not partial speech.
+    const onMessage = (message) => {
 
       if (
         message.type === "transcript" &&
         message.transcriptType === "final"
       ) {
 
+        const text =
+          message.transcript?.trim()
+
+
+        if (!text) {
+          return
+        }
+
+
         const transcriptItem = {
 
           role:
             message.role,
 
-          text:
-            message.transcript,
+          text,
 
         }
 
@@ -155,26 +351,48 @@ export default function InterviewVoice({
           transcriptItem,
         ]
 
+
+        console.log(
+          "Transcript:",
+          transcriptItem
+        )
+
       }
 
     }
 
 
-    const onError = () => {
+    // ------------------------------------------
+    // ERROR
+    // ------------------------------------------
+
+    const onError = (error) => {
+
+      console.error(
+        "Vapi error:",
+        error
+      )
+
 
       setError(
         "Something went wrong with the interview. Please try again."
       )
+
 
       setCallStatus(
         CallStatus.INACTIVE
       )
 
       setIsSpeaking(false)
+
       setIsMuted(false)
 
     }
 
+
+    // ------------------------------------------
+    // SPEECH START
+    // ------------------------------------------
 
     const onSpeechStart = () => {
 
@@ -183,6 +401,10 @@ export default function InterviewVoice({
     }
 
 
+    // ------------------------------------------
+    // SPEECH END
+    // ------------------------------------------
+
     const onSpeechEnd = () => {
 
       setIsSpeaking(false)
@@ -190,9 +412,9 @@ export default function InterviewVoice({
     }
 
 
-    // ========================================
-    // REGISTER EVENTS
-    // ========================================
+    // ==========================================
+    // REGISTER
+    // ==========================================
 
     vapi.on(
       "call-start",
@@ -225,9 +447,9 @@ export default function InterviewVoice({
     )
 
 
-    // ========================================
+    // ==========================================
     // CLEANUP
-    // ========================================
+    // ==========================================
 
     return () => {
 
@@ -270,81 +492,107 @@ export default function InterviewVoice({
   // START INTERVIEW
   // ==========================================
 
-  const handleCall = async () => {
+  const handleCall =
+    async () => {
 
-    try {
+      try {
 
-      setError(null)
+        setError(null)
 
-      setCallStatus(
-        CallStatus.CONNECTING
-      )
+        setResult(null)
 
+        setIsMuted(false)
 
-      // Clear old interview transcript
-
-      transcriptRef.current = []
+        setIsSpeaking(false)
 
 
-      // ======================================
-      // DYNAMIC INTERVIEW INFORMATION
-      // ======================================
+        // Clear previous interview
 
-      const assistantOverrides = {
-
-        variableValues: {
-
-          career:
-            title ||
-            "Career",
-
-          topics:
-            topics?.length
-              ? topics.join(", ")
-              : "General career knowledge",
-
-        },
+        transcriptRef.current = []
 
 
-        clientMessages: [
-          "transcript",
-        ],
+        setCallStatus(
+          CallStatus.CONNECTING
+        )
 
-        serverMessages: [],
+
+        // ======================================
+        // ASSISTANT VARIABLES
+        // ======================================
+
+        const assistantOverrides = {
+
+          variableValues: {
+
+            career:
+              title ||
+              "Career",
+
+            experience:
+              "Not specified",
+
+            goal:
+              "Improve career readiness",
+
+            skills:
+              "Not specified",
+
+            topics:
+              topics?.length
+                ? topics.join(", ")
+                : "General career knowledge",
+
+          },
+
+
+          clientMessages: [
+            "transcript",
+          ],
+
+
+          serverMessages: [],
+
+        }
+
+
+        // ======================================
+        // START VAPI
+        // ======================================
+
+        await vapi.start(
+
+          configureAssistant2(
+            "female",
+            "friendly"
+          ),
+
+          assistantOverrides
+
+        )
+
+
+      } catch (error) {
+
+        console.error(
+          "Start interview error:",
+          error
+        )
+
+
+        setError(
+          "Unable to start the interview. Please check your microphone and try again."
+        )
+
+
+        setCallStatus(
+          CallStatus.INACTIVE
+        )
+
+        setIsSpeaking(false)
 
       }
 
-
-      // ======================================
-      // START VAPI
-      // ======================================
-
-      await vapi.start(
-
-        configureAssistant2(
-          "female",
-          "friendly"
-        ),
-
-        assistantOverrides
-
-      )
-
-    } catch (error) {
-
-      setError(
-        "Unable to start the interview. Please check your microphone and try again."
-      )
-
-      setCallStatus(
-        CallStatus.INACTIVE
-      )
-
-      setIsSpeaking(false)
-
     }
-
-  }
 
 
   // ==========================================
@@ -364,6 +612,10 @@ export default function InterviewVoice({
     setCallStatus(
       CallStatus.FINISH
     )
+
+
+    setIsSpeaking(false)
+
 
     vapi.stop()
 
@@ -401,7 +653,70 @@ export default function InterviewVoice({
 
 
   // ==========================================
-  // UI
+  // RESET
+  // ==========================================
+
+  const resetInterview = () => {
+
+    transcriptRef.current = []
+
+    setResult(null)
+
+    setError(null)
+
+    setIsMuted(false)
+
+    setIsSpeaking(false)
+
+    setCallStatus(
+      CallStatus.INACTIVE
+    )
+
+  }
+
+
+  // ==========================================
+  // RESULT SCREEN
+  // ==========================================
+
+  if (
+    callStatus ===
+      CallStatus.COMPLETED &&
+    result
+  ) {
+
+    return (
+
+      <InterviewResult
+        result={result}
+        onRetry={resetInterview}
+      />
+
+    )
+
+  }
+
+
+  // ==========================================
+  // EVALUATING SCREEN
+  // ==========================================
+
+  if (
+    callStatus ===
+    CallStatus.EVALUATING
+  ) {
+
+    return (
+
+      <EvaluatingInterview />
+
+    )
+
+  }
+
+
+  // ==========================================
+  // MAIN INTERVIEW UI
   // ==========================================
 
   return (
@@ -439,6 +754,7 @@ export default function InterviewVoice({
               <span
                 className={`
                   size-2 rounded-full
+
                   ${
                     callStatus ===
                     CallStatus.ACTIVE
@@ -456,22 +772,24 @@ export default function InterviewVoice({
               />
 
 
-              {callStatus ===
-              CallStatus.ACTIVE
+              {
+                callStatus ===
+                CallStatus.ACTIVE
 
-                ? "Live"
-
-                : callStatus ===
-                    CallStatus.CONNECTING
-
-                  ? "Connecting"
+                  ? "Live"
 
                   : callStatus ===
-                      CallStatus.FINISH
+                      CallStatus.CONNECTING
 
-                    ? "Finishing"
+                    ? "Connecting"
 
-                    : "Ready"}
+                    : callStatus ===
+                        CallStatus.FINISH
+
+                      ? "Finishing"
+
+                      : "Ready"
+              }
 
             </div>
 
@@ -528,8 +846,12 @@ export default function InterviewVoice({
             >
 
               <Lottie
-                lottieRef={lottieRef}
-                src={sounds}
+                lottieRef={
+                  lottieRef
+                }
+                src={
+                  sounds
+                }
                 autoplay={false}
                 loop
                 className="size-full"
@@ -548,48 +870,54 @@ export default function InterviewVoice({
 
             <h2 className="text-lg font-semibold">
 
-              {callStatus ===
-              CallStatus.CONNECTING
+              {
+                callStatus ===
+                CallStatus.CONNECTING
 
-                ? "Connecting to your interviewer..."
+                  ? "Connecting to your interviewer..."
 
-                : callStatus ===
-                    CallStatus.FINISH
+                  : callStatus ===
+                      CallStatus.FINISH
 
-                  ? "Finishing interview..."
+                    ? "Finishing interview..."
 
-                  : isSpeaking
+                    : isSpeaking
 
-                    ? "Interviewer is speaking"
+                      ? "Interviewer is speaking"
 
-                    : callStatus ===
-                        CallStatus.ACTIVE
+                      : callStatus ===
+                          CallStatus.ACTIVE
 
-                      ? isMuted
-                        ? "Microphone muted"
-                        : "Listening to your answer..."
+                        ? isMuted
 
-                      : "Ready for your interview"}
+                          ? "Microphone muted"
+
+                          : "Listening to your answer..."
+
+                        : "Ready for your interview"
+              }
 
             </h2>
 
 
             <p className="mt-1 max-w-md text-sm text-muted-foreground">
 
-              {callStatus ===
-              CallStatus.ACTIVE
+              {
+                callStatus ===
+                CallStatus.ACTIVE
 
-                ? isSpeaking
+                  ? isSpeaking
 
-                  ? "Listen carefully to the question."
+                    ? "Listen carefully to the question."
 
-                  : isMuted
+                    : isMuted
 
-                    ? "Unmute your microphone when you're ready to answer."
+                      ? "Unmute your microphone when you're ready to answer."
 
-                    : "Answer naturally and explain your reasoning."
+                      : "Answer naturally and explain your reasoning."
 
-                : "Start the session when you're ready to begin."}
+                  : "Start the session when you're ready to begin."
+              }
 
             </p>
 
@@ -630,9 +958,11 @@ export default function InterviewVoice({
 
             <p className="mt-1 truncate text-sm font-semibold">
 
-              {topics?.length
-                ? `${topics.length} learning topics`
-                : "General"}
+              {
+                topics?.length
+                  ? `${topics.length} learning topics`
+                  : "General"
+              }
 
             </p>
 
@@ -679,37 +1009,40 @@ export default function InterviewVoice({
             disabled={
               callStatus ===
                 CallStatus.CONNECTING ||
+
               callStatus ===
                 CallStatus.FINISH
             }
           >
 
-            {callStatus ===
-            CallStatus.CONNECTING
+            {
+              callStatus ===
+              CallStatus.CONNECTING
 
-              ? "Connecting..."
-
-              : callStatus ===
-                  CallStatus.ACTIVE
-
-                ? (
-                  <>
-                    <PhoneOff className="size-4" />
-                    End Interview
-                  </>
-                )
+                ? "Connecting..."
 
                 : callStatus ===
-                    CallStatus.FINISH
+                    CallStatus.ACTIVE
 
-                  ? "Finishing..."
-
-                  : (
+                  ? (
                     <>
-                      <Mic className="size-4" />
-                      Start Interview
+                      <PhoneOff className="size-4" />
+                      End Interview
                     </>
-                  )}
+                  )
+
+                  : callStatus ===
+                      CallStatus.FINISH
+
+                    ? "Finishing..."
+
+                    : (
+                      <>
+                        <Mic className="size-4" />
+                        Start Interview
+                      </>
+                    )
+            }
 
           </Button>
 

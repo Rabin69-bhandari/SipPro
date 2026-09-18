@@ -34,131 +34,226 @@ export async function GET() {
 
 
     // ==========================================
-    // CAREER GOALS
+    // FETCH ALL DASHBOARD DATA IN PARALLEL
     // ==========================================
 
-    const {
-      data: careerGoals,
-      error: careerError,
-    } = await supabase
-      .from("career_goals")
-      .select(`
-        id,
-        title,
-        experience,
-        goal,
-        skills,
-        hours_per_week,
-        progress,
-        created_at,
-        updated_at
-      `)
-      .order(
-        "created_at",
-        {
-          ascending: false,
-        }
+    const [
+      careerResponse,
+      roadmapResponse,
+      progressResponse,
+      assessmentResponse,
+      interviewResponse,
+    ] = await Promise.all([
+
+      // ----------------------------------------
+      // CAREER GOALS
+      // ----------------------------------------
+
+      supabase
+        .from("career_goals")
+        .select(`
+          id,
+          title,
+          experience,
+          goal,
+          skills,
+          hours_per_week,
+          progress,
+          created_at,
+          updated_at
+        `)
+        .order(
+          "created_at",
+          {
+            ascending: false,
+          }
+        ),
+
+
+      // ----------------------------------------
+      // ROADMAPS
+      // ----------------------------------------
+
+      supabase
+        .from("career_roadmaps")
+        .select(`
+          id,
+          career_goal_id,
+          roadmap_data,
+          progress,
+          created_at,
+          updated_at
+        `)
+        .order(
+          "created_at",
+          {
+            ascending: false,
+          }
+        ),
+
+
+      // ----------------------------------------
+      // ROADMAP PROGRESS
+      // ----------------------------------------
+
+      supabase
+        .from("roadmap_progress")
+        .select(`
+          id,
+          roadmap_id,
+          topic_id,
+          status,
+          started_at,
+          completed_at,
+          created_at,
+          updated_at
+        `)
+        .order(
+          "updated_at",
+          {
+            ascending: false,
+          }
+        ),
+
+
+      // ----------------------------------------
+      // ASSESSMENTS
+      // ----------------------------------------
+
+      supabase
+        .from("assessment_results")
+        .select(`
+          id,
+          career_goal_id,
+          question_score,
+          scenario_score,
+          practical_score,
+          total_score,
+          status,
+          feedback,
+          created_at
+        `)
+        .order(
+          "created_at",
+          {
+            ascending: false,
+          }
+        ),
+
+
+      // ----------------------------------------
+      // INTERVIEWS
+      // ----------------------------------------
+
+      supabase
+        .from("interview_results")
+        .select(`
+          id,
+          career_goal_id,
+          technical_score,
+          problem_solving_score,
+          communication_score,
+          practical_reasoning_score,
+          total_score,
+          feedback,
+          created_at
+        `)
+        .order(
+          "created_at",
+          {
+            ascending: false,
+          }
+        ),
+
+    ])
+
+
+    // ==========================================
+    // HANDLE QUERY ERRORS
+    // ==========================================
+
+    if (careerResponse.error) {
+
+      console.error(
+        "Career goals error:",
+        careerResponse.error
       )
 
+      throw careerResponse.error
 
-    if (careerError) {
-      throw careerError
+    }
+
+
+    if (roadmapResponse.error) {
+
+      console.error(
+        "Roadmaps error:",
+        roadmapResponse.error
+      )
+
+      throw roadmapResponse.error
+
+    }
+
+
+    if (progressResponse.error) {
+
+      console.error(
+        "Roadmap progress error:",
+        progressResponse.error
+      )
+
+      throw progressResponse.error
+
+    }
+
+
+    if (assessmentResponse.error) {
+
+      console.error(
+        "Assessment results error:",
+        assessmentResponse.error
+      )
+
+      throw assessmentResponse.error
+
+    }
+
+
+    if (interviewResponse.error) {
+
+      console.error(
+        "Interview results error:",
+        interviewResponse.error
+      )
+
+      throw interviewResponse.error
+
     }
 
 
     // ==========================================
-    // ROADMAPS
+    // NORMALIZE DATA
     // ==========================================
 
-    const {
-      data: roadmaps,
-      error: roadmapError,
-    } = await supabase
-      .from("career_roadmaps")
-      .select(`
-        id,
-        career_goal_id,
-        roadmap_data,
-        progress,
-        created_at,
-        updated_at
-      `)
-      .order(
-        "created_at",
-        {
-          ascending: false,
-        }
-      )
+    const careerGoals =
+      careerResponse.data ?? []
 
 
-    if (roadmapError) {
-      throw roadmapError
-    }
+    const roadmaps =
+      roadmapResponse.data ?? []
 
 
-    // ==========================================
-    // ROADMAP PROGRESS
-    // ==========================================
-
-    const {
-      data: topicProgress,
-      error: progressError,
-    } = await supabase
-      .from("roadmap_progress")
-      .select(`
-        id,
-        roadmap_id,
-        topic_id,
-        status,
-        started_at,
-        completed_at,
-        created_at,
-        updated_at
-      `)
-      .order(
-        "updated_at",
-        {
-          ascending: false,
-        }
-      )
+    const topicProgress =
+      progressResponse.data ?? []
 
 
-    if (progressError) {
-      throw progressError
-    }
+    const assessmentResults =
+      assessmentResponse.data ?? []
 
 
-    // ==========================================
-    // ASSESSMENT RESULTS
-    // ==========================================
-
-    const {
-      data: assessmentResults,
-      error: assessmentError,
-    } = await supabase
-      .from("assessment_results")
-      .select(`
-        id,
-        career_goal_id,
-        question_score,
-        scenario_score,
-        practical_score,
-        total_score,
-        status,
-        feedback,
-        created_at
-      `)
-      .order(
-        "created_at",
-        {
-          ascending: false,
-        }
-      )
-
-
-    if (assessmentError) {
-      throw assessmentError
-    }
+    const interviewResults =
+      interviewResponse.data ?? []
 
 
     // ==========================================
@@ -168,9 +263,10 @@ export async function GET() {
     const careers =
       careerGoals.map((career) => {
 
-        // --------------------------------------
+
+        // ======================================
         // ROADMAP
-        // --------------------------------------
+        // ======================================
 
         const roadmap =
           roadmaps.find(
@@ -180,9 +276,9 @@ export async function GET() {
           ) || null
 
 
-        // --------------------------------------
-        // TOPIC PROGRESS
-        // --------------------------------------
+        // ======================================
+        // ROADMAP PROGRESS ITEMS
+        // ======================================
 
         const progressItems =
           roadmap
@@ -202,9 +298,9 @@ export async function GET() {
           )
 
 
-        // --------------------------------------
-        // ROADMAP TOPICS
-        // --------------------------------------
+        // ======================================
+        // ROADMAP MODULES
+        // ======================================
 
         const modules =
           roadmap?.roadmap_data
@@ -222,6 +318,10 @@ export async function GET() {
           allTopics.length
 
 
+        // ======================================
+        // COMPLETED TOPIC IDS
+        // ======================================
+
         const completedTopicIds =
           new Set(
             completedTopics.map(
@@ -231,9 +331,9 @@ export async function GET() {
           )
 
 
-        // --------------------------------------
+        // ======================================
         // NEXT TOPIC
-        // --------------------------------------
+        // ======================================
 
         const nextTopic =
           allTopics.find(
@@ -244,9 +344,12 @@ export async function GET() {
           ) || null
 
 
-        // --------------------------------------
+        // ======================================
         // LATEST ASSESSMENT
-        // --------------------------------------
+        // ======================================
+
+        // Results are already ordered newest first,
+        // so find() gives the latest result.
 
         const assessment =
           assessmentResults.find(
@@ -256,9 +359,21 @@ export async function GET() {
           ) || null
 
 
-        // --------------------------------------
-        // ASSESSMENT %
-        // --------------------------------------
+        // ======================================
+        // ASSESSMENT HISTORY
+        // ======================================
+
+        const assessmentHistory =
+          assessmentResults.filter(
+            (item) =>
+              item.career_goal_id ===
+              career.id
+          )
+
+
+        // ======================================
+        // ASSESSMENT PERCENTAGE
+        // ======================================
 
         const assessmentPercentage =
           assessment
@@ -271,9 +386,46 @@ export async function GET() {
             : 0
 
 
-        // --------------------------------------
-        // ROADMAP %
-        // --------------------------------------
+        // ======================================
+        // LATEST INTERVIEW
+        // ======================================
+
+        // Results are ordered newest first,
+        // so find() gives latest interview.
+
+        const interview =
+          interviewResults.find(
+            (item) =>
+              item.career_goal_id ===
+              career.id
+          ) || null
+
+
+        // ======================================
+        // INTERVIEW HISTORY
+        // ======================================
+
+        const interviewHistory =
+          interviewResults.filter(
+            (item) =>
+              item.career_goal_id ===
+              career.id
+          )
+
+
+        // ======================================
+        // INTERVIEW SCORE
+        // ======================================
+
+        // Interview is already scored /100.
+
+        const interviewPercentage =
+          interview?.total_score ?? 0
+
+
+        // ======================================
+        // ROADMAP PERCENTAGE
+        // ======================================
 
         const roadmapProgress =
           roadmap?.progress ??
@@ -282,41 +434,57 @@ export async function GET() {
 
 
         // ======================================
-        // READINESS
+        // READINESS SCORE
         // ======================================
-        //
-        // Temporary MVP formula.
-        //
-        // Currently:
-        // Learning   = 60%
-        // Assessment = 40%
-        //
-        // Later, when interview_results exists:
         //
         // Learning   = 40%
         // Assessment = 30%
         // Interview  = 30%
         //
+        // This is a product-defined readiness
+        // indicator based on available evidence.
         // ======================================
 
         const readinessScore =
           Math.round(
-            roadmapProgress * 0.6 +
-            assessmentPercentage * 0.4
+            roadmapProgress * 0.4 +
+            assessmentPercentage * 0.3 +
+            interviewPercentage * 0.3
           )
 
 
-        // --------------------------------------
+        // ======================================
+        // DEMONSTRATED SKILLS
+        // ======================================
+
+        const demonstratedSkills =
+          Array.isArray(
+            interview?.feedback
+              ?.demonstratedSkills
+          )
+            ? interview.feedback
+                .demonstratedSkills
+            : []
+
+
+        // ======================================
         // NEXT ACTION
-        // --------------------------------------
+        // ======================================
 
         let nextAction = null
 
 
+        // --------------------------------------
+        // NO ROADMAP
+        // --------------------------------------
+
         if (!roadmap) {
 
           nextAction = {
-            type: "roadmap",
+
+            type:
+              "roadmap",
+
             title:
               "Create Your Roadmap",
 
@@ -325,16 +493,24 @@ export async function GET() {
 
             href:
               "/roadmap",
+
           }
 
         }
+
+
+        // --------------------------------------
+        // LEARNING NOT COMPLETE
+        // --------------------------------------
 
         else if (
           roadmapProgress < 100
         ) {
 
           nextAction = {
-            type: "learning",
+
+            type:
+              "learning",
 
             title:
               "Continue Learning",
@@ -346,14 +522,22 @@ export async function GET() {
 
             href:
               `/roadmap/${roadmap.id}`,
+
           }
 
         }
 
+
+        // --------------------------------------
+        // NO ASSESSMENT
+        // --------------------------------------
+
         else if (!assessment) {
 
           nextAction = {
-            type: "assessment",
+
+            type:
+              "assessment",
 
             title:
               "Verify Your Skills",
@@ -363,23 +547,57 @@ export async function GET() {
 
             href:
               "/assessment",
+
           }
 
         }
 
-        else {
+
+        // --------------------------------------
+        // NO INTERVIEW
+        // --------------------------------------
+
+        else if (!interview) {
 
           nextAction = {
-            type: "interview",
+
+            type:
+              "interview",
 
             title:
               "Practice Your Interview",
 
             description:
-              `Practice a ${career.title} AI interview.`,
+              `Complete your ${career.title} AI interview.`,
 
             href:
               "/interview/practice",
+
+          }
+
+        }
+
+
+        // --------------------------------------
+        // EVERYTHING COMPLETED
+        // --------------------------------------
+
+        else {
+
+          nextAction = {
+
+            type:
+              "profile",
+
+            title:
+              "Review Your Career Readiness",
+
+            description:
+              "Review your verified learning, assessment, and interview evidence.",
+
+            href:
+              "/home",
+
           }
 
         }
@@ -390,6 +608,10 @@ export async function GET() {
         // ======================================
 
         return {
+
+          // ------------------------------------
+          // CAREER
+          // ------------------------------------
 
           id:
             career.id,
@@ -446,6 +668,9 @@ export async function GET() {
 
                   modules,
 
+                  createdAt:
+                    roadmap.created_at,
+
                 }
               : null,
 
@@ -490,6 +715,94 @@ export async function GET() {
 
 
           // ====================================
+          // ASSESSMENT HISTORY INFO
+          // ====================================
+
+          assessmentStats: {
+
+            attempts:
+              assessmentHistory.length,
+
+          },
+
+
+          // ====================================
+          // INTERVIEW
+          // ====================================
+
+          interview:
+            interview
+              ? {
+
+                  id:
+                    interview.id,
+
+                  technicalScore:
+                    interview.technical_score,
+
+                  problemSolvingScore:
+                    interview.problem_solving_score,
+
+                  communicationScore:
+                    interview.communication_score,
+
+                  practicalReasoningScore:
+                    interview.practical_reasoning_score,
+
+                  totalScore:
+                    interview.total_score,
+
+                  percentage:
+                    interviewPercentage,
+
+                  feedback:
+                    interview.feedback,
+
+                  demonstratedSkills,
+
+                  createdAt:
+                    interview.created_at,
+
+                }
+              : null,
+
+
+          // ====================================
+          // INTERVIEW HISTORY INFO
+          // ====================================
+
+          interviewStats: {
+
+            attempts:
+              interviewHistory.length,
+
+          },
+
+
+          // ====================================
+          // EVIDENCE
+          // ====================================
+
+          evidence: {
+
+            claimedSkills:
+              career.skills ?? [],
+
+            demonstratedSkills,
+
+            roadmapCompleted:
+              roadmapProgress === 100,
+
+            assessmentCompleted:
+              Boolean(assessment),
+
+            interviewCompleted:
+              Boolean(interview),
+
+          },
+
+
+          // ====================================
           // READINESS
           // ====================================
 
@@ -505,7 +818,7 @@ export async function GET() {
               assessmentPercentage,
 
             interview:
-              null,
+              interviewPercentage,
 
           },
 
@@ -542,12 +855,67 @@ export async function GET() {
 
 
     // ==========================================
+    // INTERVIEW STATS
+    // ==========================================
+
+    const interviewsTaken =
+      interviewResults.length
+
+
+    const averageInterviewScore =
+      interviewsTaken > 0
+        ? Math.round(
+            interviewResults.reduce(
+              (total, interview) =>
+                total +
+                interview.total_score,
+              0
+            ) /
+            interviewsTaken
+          )
+        : 0
+
+
+    // ==========================================
+    // VERIFIED / DEMONSTRATED SKILLS
+    // ==========================================
+
+    const allDemonstratedSkills =
+      [
+        ...new Set(
+
+          interviewResults.flatMap(
+            (interview) => {
+
+              const skills =
+                interview.feedback
+                  ?.demonstratedSkills
+
+              return Array.isArray(
+                skills
+              )
+                ? skills
+                : []
+
+            }
+          )
+
+        ),
+      ]
+
+
+    // ==========================================
     // RESPONSE
     // ==========================================
 
     return Response.json({
 
       success: true,
+
+
+      // ========================================
+      // OVERVIEW
+      // ========================================
 
       overview: {
 
@@ -566,7 +934,19 @@ export async function GET() {
         assessmentsPassed:
           passedAssessments,
 
+        interviewsTaken,
+
+        averageInterviewScore,
+
+        demonstratedSkills:
+          allDemonstratedSkills.length,
+
       },
+
+
+      // ========================================
+      // CAREERS
+      // ========================================
 
       careers,
 
@@ -574,6 +954,10 @@ export async function GET() {
 
 
   } catch (error) {
+
+    // ==========================================
+    // ERROR
+    // ==========================================
 
     console.error(
       "Dashboard API error:",
@@ -583,11 +967,13 @@ export async function GET() {
 
     return Response.json(
       {
+
         success: false,
 
         error:
           error.message ||
           "Failed to load dashboard",
+
       },
       {
         status: 500,

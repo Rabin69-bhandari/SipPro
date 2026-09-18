@@ -1,6 +1,7 @@
 "use client"
 
 import {
+  useCallback,
   useEffect,
   useMemo,
   useState,
@@ -50,7 +51,7 @@ export default function Home() {
   // ==========================================
 
   const fetchDashboard =
-    async () => {
+    useCallback(async () => {
 
       try {
 
@@ -60,7 +61,11 @@ export default function Home() {
 
         const response =
           await fetch(
-            "/api/dashboard"
+            "/api/dashboard",
+            {
+              method: "GET",
+              cache: "no-store",
+            }
           )
 
 
@@ -81,25 +86,61 @@ export default function Home() {
         setData(result)
 
 
+        // ======================================
+        // SELECT CAREER
+        // ======================================
+
         if (
-          result.careers?.length >
-          0
+          result.careers?.length > 0
         ) {
 
           setSelectedCareerId(
-            (current) =>
-              current ||
-              result.careers[0].id
+            (current) => {
+
+              // Keep currently selected career
+              // if it still exists.
+
+              const careerStillExists =
+                result.careers.some(
+                  (career) =>
+                    career.id === current
+                )
+
+
+              if (careerStillExists) {
+
+                return current
+
+              }
+
+
+              // Otherwise select newest/first career.
+
+              return result.careers[0].id
+
+            }
           )
+
+        } else {
+
+          setSelectedCareerId(null)
 
         }
 
+
       } catch (error) {
+
+        console.error(
+          "Dashboard fetch error:",
+          error
+        )
+
 
         setError(
           error.message ||
           "Something went wrong while loading your dashboard."
         )
+
 
       } finally {
 
@@ -107,7 +148,7 @@ export default function Home() {
 
       }
 
-    }
+    }, [])
 
 
   // ==========================================
@@ -118,7 +159,7 @@ export default function Home() {
 
     fetchDashboard()
 
-  }, [])
+  }, [fetchDashboard])
 
 
   // ==========================================
@@ -131,7 +172,9 @@ export default function Home() {
       if (
         !data?.careers?.length
       ) {
+
         return null
+
       }
 
 
@@ -154,7 +197,7 @@ export default function Home() {
 
 
   // ==========================================
-  // STATES
+  // LOADING STATE
   // ==========================================
 
   if (loading) {
@@ -166,19 +209,29 @@ export default function Home() {
   }
 
 
+  // ==========================================
+  // ERROR STATE
+  // ==========================================
+
   if (error) {
 
     return (
+
       <DashboardError
         error={error}
         onRetry={
           fetchDashboard
         }
       />
+
     )
 
   }
 
+
+  // ==========================================
+  // NO CAREERS
+  // ==========================================
 
   if (!career) {
 
@@ -194,13 +247,104 @@ export default function Home() {
   // ==========================================
 
   const roadmap =
-    career.roadmap
+    career.roadmap ?? null
+
 
   const assessment =
-    career.assessment
+    career.assessment ?? null
+
+
+  const interview =
+    career.interview ?? null
+
 
   const readiness =
-    career.readiness
+    career.readiness ?? {
+
+      score: 0,
+
+      learning: 0,
+
+      assessment: 0,
+
+      interview: 0,
+
+    }
+
+
+  // ==========================================
+  // EVIDENCE
+  // ==========================================
+
+  const evidence =
+    career.evidence ?? {
+
+      claimedSkills:
+        career.skills ?? [],
+
+      demonstratedSkills:
+        [],
+
+      roadmapCompleted:
+        false,
+
+      assessmentCompleted:
+        false,
+
+      interviewCompleted:
+        false,
+
+    }
+
+
+  // ==========================================
+  // ASSESSMENT STATS
+  // ==========================================
+
+  const assessmentStats =
+    career.assessmentStats ?? {
+
+      attempts: 0,
+
+    }
+
+
+  // ==========================================
+  // INTERVIEW STATS
+  // ==========================================
+
+  const interviewStats =
+    career.interviewStats ?? {
+
+      attempts: 0,
+
+    }
+
+
+  // ==========================================
+  // OVERVIEW
+  // ==========================================
+
+  const overview =
+    data?.overview ?? {
+
+      totalCareers: 0,
+
+      totalRoadmaps: 0,
+
+      completedTopics: 0,
+
+      assessmentsTaken: 0,
+
+      assessmentsPassed: 0,
+
+      interviewsTaken: 0,
+
+      averageInterviewScore: 0,
+
+      demonstratedSkills: 0,
+
+    }
 
 
   // ==========================================
@@ -214,87 +358,143 @@ export default function Home() {
       <div className="mx-auto w-full max-w-7xl px-5 py-8 md:px-8 lg:px-10">
 
 
+        {/* ================================== */}
         {/* HEADER */}
+        {/* ================================== */}
 
         <HomeHeader
+
           careers={
             data.careers
           }
+
           career={
             career
           }
+
           onCareerChange={
             setSelectedCareerId
           }
+
         />
 
 
+        {/* ================================== */}
         {/* CAREER + READINESS */}
+        {/* ================================== */}
 
         <section className="grid gap-5 lg:grid-cols-[1.5fr_1fr]">
 
           <CareerOverview
+
             career={
               career
             }
+
             roadmap={
               roadmap
             }
+
+            assessment={
+              assessment
+            }
+
+            interview={
+              interview
+            }
+
           />
 
+
           <ReadinessCard
+
             readiness={
               readiness
             }
+
           />
 
         </section>
 
 
+        {/* ================================== */}
         {/* MAIN STATS */}
+        {/* ================================== */}
 
         <StatsOverview
+
           roadmap={
             roadmap
           }
+
           assessment={
             assessment
           }
+
+          interview={
+            interview
+          }
+
           readiness={
             readiness
           }
+
         />
 
 
+        {/* ================================== */}
         {/* ROADMAP + ACTIONS */}
+        {/* ================================== */}
 
         <section className="mt-5 grid gap-5 lg:grid-cols-[1.6fr_1fr]">
 
+
+          {/* ROADMAP */}
+
           <RoadmapSnapshot
+
             roadmap={
               roadmap
             }
+
           />
 
+
+          {/* ACTION + EVIDENCE */}
 
           <div className="space-y-5">
 
             <NextActionCard
+
               nextAction={
                 career.nextAction
               }
+
             />
 
+
             <SkillEvidence
+
+              evidence={
+                evidence
+              }
+
               roadmap={
                 roadmap
               }
+
               assessment={
                 assessment
               }
+
+              interview={
+                interview
+              }
+
               readiness={
                 readiness
               }
+
             />
 
           </div>
@@ -302,31 +502,59 @@ export default function Home() {
         </section>
 
 
+        {/* ================================== */}
         {/* ASSESSMENT + INTERVIEW */}
+        {/* ================================== */}
 
         <section className="mt-5 grid gap-5 lg:grid-cols-2">
 
+
+          {/* ASSESSMENT */}
+
           <AssessmentCard
+
             assessment={
               assessment
             }
+
+            stats={
+              assessmentStats
+            }
+
           />
 
+
+          {/* INTERVIEW */}
+
           <InterviewCard
+
+            interview={
+              interview
+            }
+
+            stats={
+              interviewStats
+            }
+
             readiness={
               readiness
             }
+
           />
 
         </section>
 
 
+        {/* ================================== */}
         {/* OVERALL JOURNEY */}
+        {/* ================================== */}
 
         <JourneyOverview
+
           overview={
-            data.overview
+            overview
           }
+
         />
 
 
@@ -335,4 +563,5 @@ export default function Home() {
     </main>
 
   )
+
 }
