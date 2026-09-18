@@ -99,16 +99,35 @@ export async function POST(request) {
 
 export async function GET() {
   try {
+    // -----------------------------------------
+    // 1. Authenticate user
+    // -----------------------------------------
+
     const { userId } = await auth()
 
     if (!userId) {
       return Response.json(
-        { success: false, error: "Unauthorized" },
-        { status: 401 }
+        {
+          success: false,
+          error: "Unauthorized",
+        },
+        {
+          status: 401,
+        }
       )
     }
 
+
+    // -----------------------------------------
+    // 2. Supabase client
+    // -----------------------------------------
+
     const supabase = createServerSupabaseClient()
+
+
+    // -----------------------------------------
+    // 3. Fetch roadmaps + career goal + progress
+    // -----------------------------------------
 
     const { data, error } = await supabase
       .from("career_roadmaps")
@@ -117,35 +136,87 @@ export async function GET() {
         progress,
         roadmap_data,
         created_at,
+
         career_goal:career_goals (
           id,
           title,
           experience,
           goal,
           skills,
-          hours_per_week
+          hours_per_week,
+          progress
+        ),
+
+        topic_progress:roadmap_progress (
+          topic_id,
+          status,
+          started_at,
+          completed_at
         )
       `)
-      .order("created_at", { ascending: false })
+      .order("created_at", {
+        ascending: false,
+      })
+
 
     if (error) {
       throw error
     }
 
-    return Response.json({
-      success: true,
-      roadmaps: data,
+
+    // -----------------------------------------
+    // 4. Format completed topic IDs
+    // -----------------------------------------
+
+    const roadmaps = data.map((roadmap) => {
+
+      const completedTopics =
+        roadmap.topic_progress
+          ?.filter(
+            (topic) =>
+              topic.status === "completed"
+          )
+          .map(
+            (topic) =>
+              topic.topic_id
+          ) ?? []
+
+
+      return {
+        ...roadmap,
+
+        completedTopics,
+      }
+
     })
 
+
+    // -----------------------------------------
+    // 5. Response
+    // -----------------------------------------
+
+    return Response.json({
+      success: true,
+      roadmaps,
+    })
+
+
   } catch (error) {
-    console.error("Fetch roadmaps error:", error)
+
+    console.error(
+      "Fetch roadmaps error:",
+      error
+    )
+
 
     return Response.json(
       {
         success: false,
         error: error.message,
       },
-      { status: 500 }
+      {
+        status: 500,
+      }
     )
   }
 }
