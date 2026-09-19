@@ -6,7 +6,7 @@ export const PLAN_LIMITS = {
   },
 
   pro: {
-    roadmaps: 4,
+    roadmaps: 5,
     assessments: Infinity,
     interviews: 10,
   },

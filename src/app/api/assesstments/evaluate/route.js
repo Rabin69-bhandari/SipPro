@@ -11,6 +11,57 @@ const ai = new GoogleGenAI({
 
 
 // ============================================================
+// HELPERS
+// ============================================================
+
+function normalizeScore(score) {
+  const number = Number(score)
+
+  if (!Number.isFinite(number)) {
+    return 0
+  }
+
+  return Math.max(
+    0,
+    Math.min(
+      10,
+      Math.round(number)
+    )
+  )
+}
+
+
+function isValidPracticalImage(image) {
+  if (!image) {
+    return true
+  }
+
+  const allowedTypes = [
+    "image/png",
+    "image/jpeg",
+    "image/webp",
+  ]
+
+  if (
+    !image.data ||
+    typeof image.data !== "string"
+  ) {
+    return false
+  }
+
+  if (
+    !allowedTypes.includes(
+      image.mimeType
+    )
+  ) {
+    return false
+  }
+
+  return true
+}
+
+
+// ============================================================
 // POST — EVALUATE ASSESSMENT
 // ============================================================
 
@@ -37,13 +88,14 @@ export async function POST(request) {
 
 
     // ==========================================
-    // 2. CHECK ASSESSMENT PLAN LIMIT
+    // 2. CHECK PLAN LIMIT
     // ==========================================
 
-    const access = await checkFeatureLimit({
-      userId,
-      feature: "assessments",
-    })
+    const access =
+      await checkFeatureLimit({
+        userId,
+        feature: "assessments",
+      })
 
 
     if (!access.allowed) {
@@ -51,7 +103,8 @@ export async function POST(request) {
         {
           success: false,
 
-          code: "PLAN_LIMIT_REACHED",
+          code:
+            "PLAN_LIMIT_REACHED",
 
           error:
             "Your current plan has reached its assessment limit.",
@@ -60,7 +113,8 @@ export async function POST(request) {
             plan: access.plan,
             usage: access.usage,
             limit: access.limit,
-            remaining: access.remaining,
+            remaining:
+              access.remaining,
           },
         },
         {
@@ -74,12 +128,15 @@ export async function POST(request) {
     // 3. REQUEST BODY
     // ==========================================
 
-    const body = await request.json()
+    const body =
+      await request.json()
+
 
     const {
       careerGoalId,
       assessment,
       answers,
+      practicalImage,
     } = body
 
 
@@ -91,7 +148,28 @@ export async function POST(request) {
       return Response.json(
         {
           success: false,
-          error: "Missing assessment data",
+          error:
+            "Missing assessment data",
+        },
+        {
+          status: 400,
+        }
+      )
+    }
+
+
+    // ==========================================
+    // 4. VALIDATE ANSWERS
+    // ==========================================
+
+    if (
+      !answers.question?.trim()
+    ) {
+      return Response.json(
+        {
+          success: false,
+          error:
+            "Knowledge question must be completed",
         },
         {
           status: 400,
@@ -101,15 +179,48 @@ export async function POST(request) {
 
 
     if (
-      !answers.question?.trim() ||
-      !answers.scenario?.trim() ||
-      !answers.practical?.trim()
+      !answers.scenario?.trim()
     ) {
       return Response.json(
         {
           success: false,
           error:
-            "All assessment sections must be completed",
+            "Scenario must be completed",
+        },
+        {
+          status: 400,
+        }
+      )
+    }
+
+
+    if (
+      !answers.practical?.trim() &&
+      !practicalImage?.data
+    ) {
+      return Response.json(
+        {
+          success: false,
+          error:
+            "Practical task must include a written solution or image evidence",
+        },
+        {
+          status: 400,
+        }
+      )
+    }
+
+
+    if (
+      !isValidPracticalImage(
+        practicalImage
+      )
+    ) {
+      return Response.json(
+        {
+          success: false,
+          error:
+            "Invalid practical image",
         },
         {
           status: 400,
@@ -119,7 +230,7 @@ export async function POST(request) {
 
 
     // ==========================================
-    // 4. SUPABASE
+    // 5. SUPABASE
     // ==========================================
 
     const supabase =
@@ -127,7 +238,7 @@ export async function POST(request) {
 
 
     // ==========================================
-    // 5. FETCH CAREER GOAL
+    // 6. FETCH TRUSTED CAREER GOAL
     // ==========================================
 
     const {
@@ -143,15 +254,22 @@ export async function POST(request) {
         skills,
         progress
       `)
-      .eq("id", careerGoalId)
+      .eq(
+        "id",
+        careerGoalId
+      )
       .single()
 
 
-    if (careerError || !careerGoal) {
+    if (
+      careerError ||
+      !careerGoal
+    ) {
       return Response.json(
         {
           success: false,
-          error: "Career goal not found",
+          error:
+            "Career goal not found",
         },
         {
           status: 404,
@@ -161,8 +279,14 @@ export async function POST(request) {
 
 
     // ==========================================
-    // 6. BUILD GEMINI PROMPT
+    // 7. BUILD PROMPT
     // ==========================================
+
+    const hasPracticalImage =
+      Boolean(
+        practicalImage?.data
+      )
+
 
     const prompt = `
 You are evaluating a candidate's career skill assessment.
@@ -186,7 +310,9 @@ ${careerGoal.skills?.join(", ") || "None provided"}
 
 ASSESSMENT
 
+
 SECTION 1 — KNOWLEDGE QUESTION
+
 Maximum marks: 10
 
 Question:
@@ -197,6 +323,7 @@ ${answers.question}
 
 
 SECTION 2 — SCENARIO
+
 Maximum marks: 10
 
 Scenario:
@@ -207,22 +334,47 @@ ${answers.scenario}
 
 
 SECTION 3 — PRACTICAL TASK
+
 Maximum marks: 10
 
 Task:
 ${assessment.practical?.prompt}
 
-Candidate Submission:
-${answers.practical}
+Candidate Written Submission:
+${answers.practical?.trim() || "No written submission provided."}
+
+Practical Image Evidence:
+${
+  hasPracticalImage
+    ? "An image submitted by the candidate is attached after this instruction."
+    : "No image was submitted."
+}
 
 
-EVALUATION RULES
+PRACTICAL IMAGE EVALUATION RULES
+
+If practical image evidence is attached:
+
+- Inspect the image carefully.
+- Treat the image as supporting evidence for the practical task.
+- Evaluate only information that is actually visible in the image.
+- Do not assume hidden functionality.
+- Do not assume code works merely because an interface is visible.
+- Consider whether the image is relevant to the requested practical task.
+- Combine the written submission and visible image evidence when determining the practical score.
+
+If the practical task requires implementation details that cannot be verified from a screenshot, do not assume those details are correct.
+
+If no image is attached, evaluate the practical task using the written submission only.
+
+
+GENERAL EVALUATION RULES
 
 Evaluate each section independently.
 
 Each section must receive an integer score from 0 to 10.
 
-Use these general standards:
+Use these standards:
 
 0-2:
 Incorrect, irrelevant, or shows very little understanding.
@@ -244,15 +396,22 @@ Exceptional answer that fully satisfies the task with accurate reasoning.
 
 Do not give marks simply because the response is long.
 
-Judge correctness, relevance, reasoning, practical usefulness,
-and how well the candidate satisfies the actual question.
+Judge:
+
+- correctness
+- relevance
+- reasoning
+- practical usefulness
+- fulfillment of the requested task
 
 For each section provide concise constructive feedback.
 
 Also identify:
+
 - strengths demonstrated by the candidate
 - areas that need improvement
 - concise overall feedback
+
 
 Return ONLY valid JSON.
 
@@ -279,23 +438,56 @@ Use exactly this structure:
 
 
     // ==========================================
-    // 7. GEMINI EVALUATION
+    // 8. BUILD GEMINI CONTENT
+    // ==========================================
+
+    const parts = [
+      {
+        text: prompt,
+      },
+    ]
+
+
+    if (hasPracticalImage) {
+      parts.push({
+        inlineData: {
+          mimeType:
+            practicalImage.mimeType,
+
+          data:
+            practicalImage.data,
+        },
+      })
+    }
+
+
+    // ==========================================
+    // 9. GEMINI EVALUATION
     // ==========================================
 
     const response =
       await ai.models.generateContent({
-        model: "gemini-3.5-flash-lite",
+        model:
+          "gemini-3.5-flash-lite",
 
-        contents: prompt,
+        contents: [
+          {
+            role: "user",
+            parts,
+          },
+        ],
 
         config: {
           responseMimeType:
             "application/json",
+
+          temperature: 0.2,
         },
       })
 
 
-    const rawText = response.text
+    const rawText =
+      response.text
 
 
     if (!rawText) {
@@ -305,40 +497,39 @@ Use exactly this structure:
     }
 
 
-    const evaluation =
-      JSON.parse(rawText)
+    let evaluation
 
 
-    // ==========================================
-    // 8. VALIDATE SCORES
-    // ==========================================
+    try {
+      evaluation =
+        JSON.parse(rawText)
+    } catch {
+      console.error(
+        "Invalid Gemini JSON:",
+        rawText
+      )
 
-    const normalizeScore = (score) => {
-      const number = Number(score)
-
-      if (!Number.isFinite(number)) {
-        return 0
-      }
-
-      return Math.max(
-        0,
-        Math.min(
-          10,
-          Math.round(number)
-        )
+      throw new Error(
+        "Gemini returned an invalid evaluation"
       )
     }
 
+
+    // ==========================================
+    // 10. VALIDATE SCORES
+    // ==========================================
 
     const questionScore =
       normalizeScore(
         evaluation.question?.score
       )
 
+
     const scenarioScore =
       normalizeScore(
         evaluation.scenario?.score
       )
+
 
     const practicalScore =
       normalizeScore(
@@ -347,7 +538,7 @@ Use exactly this structure:
 
 
     // ==========================================
-    // 9. SERVER CALCULATES TOTAL
+    // 11. SERVER CALCULATES TOTAL
     // ==========================================
 
     const totalScore =
@@ -357,7 +548,7 @@ Use exactly this structure:
 
 
     // ==========================================
-    // 10. STATUS
+    // 12. STATUS
     // ==========================================
 
     const status =
@@ -367,30 +558,43 @@ Use exactly this structure:
 
 
     // ==========================================
-    // 11. CLEAN FEEDBACK
+    // 13. CLEAN FEEDBACK
     // ==========================================
 
     const feedback = {
+
       question: {
-        score: questionScore,
+        score:
+          questionScore,
+
         feedback:
-          evaluation.question?.feedback ||
-          "",
+          evaluation.question
+            ?.feedback || "",
       },
+
 
       scenario: {
-        score: scenarioScore,
+        score:
+          scenarioScore,
+
         feedback:
-          evaluation.scenario?.feedback ||
-          "",
+          evaluation.scenario
+            ?.feedback || "",
       },
 
+
       practical: {
-        score: practicalScore,
+        score:
+          practicalScore,
+
         feedback:
-          evaluation.practical?.feedback ||
-          "",
+          evaluation.practical
+            ?.feedback || "",
+
+        imageEvidenceUsed:
+          hasPracticalImage,
       },
+
 
       strengths:
         Array.isArray(
@@ -399,6 +603,7 @@ Use exactly this structure:
           ? evaluation.strengths
           : [],
 
+
       weakAreas:
         Array.isArray(
           evaluation.weakAreas
@@ -406,21 +611,26 @@ Use exactly this structure:
           ? evaluation.weakAreas
           : [],
 
+
       overallFeedback:
-        evaluation.overallFeedback || "",
+        evaluation.overallFeedback ||
+        "",
     }
 
 
     // ==========================================
-    // 12. SAVE RESULT
+    // 14. SAVE RESULT
     // ==========================================
 
     const {
       data: savedResult,
       error: saveError,
     } = await supabase
-      .from("assessment_results")
+      .from(
+        "assessment_results"
+      )
       .insert({
+
         career_goal_id:
           careerGoalId,
 
@@ -439,6 +649,7 @@ Use exactly this structure:
         status,
 
         feedback,
+
       })
       .select()
       .single()
@@ -457,13 +668,14 @@ Use exactly this structure:
 
 
     // ==========================================
-    // 13. RETURN RESULT
+    // 15. RETURN RESULT
     // ==========================================
 
     return Response.json({
       success: true,
 
       result: {
+
         id:
           savedResult.id,
 
@@ -480,6 +692,9 @@ Use exactly this structure:
         maxScore: 30,
 
         status,
+
+        practicalImageUsed:
+          hasPracticalImage,
 
         feedback,
 
