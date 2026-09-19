@@ -2,6 +2,7 @@ import { auth } from "@clerk/nextjs/server"
 import { GoogleGenAI } from "@google/genai"
 
 import { createServerSupabaseClient } from "@/lib/supabase/server"
+import { checkFeatureLimit } from "@/lib/billings/check-limit"
 
 
 // ==========================================
@@ -18,11 +19,10 @@ const ai = new GoogleGenAI({
 // ==========================================
 
 export async function POST(request) {
-
   try {
 
     // ========================================
-    // AUTH
+    // 1. AUTH
     // ========================================
 
     const { userId } =
@@ -30,7 +30,6 @@ export async function POST(request) {
 
 
     if (!userId) {
-
       return Response.json(
         {
           success: false,
@@ -40,12 +39,54 @@ export async function POST(request) {
           status: 401,
         }
       )
-
     }
 
 
     // ========================================
-    // BODY
+    // 2. CHECK INTERVIEW PLAN LIMIT
+    // ========================================
+
+    const access =
+      await checkFeatureLimit({
+        userId,
+        feature: "interviews",
+      })
+
+
+    if (!access.allowed) {
+      return Response.json(
+        {
+          success: false,
+
+          code:
+            "PLAN_LIMIT_REACHED",
+
+          error:
+            "Your current plan has reached its interview limit.",
+
+          billing: {
+            plan:
+              access.plan,
+
+            usage:
+              access.usage,
+
+            limit:
+              access.limit,
+
+            remaining:
+              access.remaining,
+          },
+        },
+        {
+          status: 403,
+        }
+      )
+    }
+
+
+    // ========================================
+    // 3. BODY
     // ========================================
 
     const body =
@@ -61,21 +102,20 @@ export async function POST(request) {
 
 
     // ========================================
-    // VALIDATION
+    // 4. VALIDATION
     // ========================================
 
     if (!roadmapId) {
-
       return Response.json(
         {
           success: false,
-          error: "Roadmap ID is required.",
+          error:
+            "Roadmap ID is required.",
         },
         {
           status: 400,
         }
       )
-
     }
 
 
@@ -83,7 +123,6 @@ export async function POST(request) {
       !Array.isArray(transcript) ||
       transcript.length === 0
     ) {
-
       return Response.json(
         {
           success: false,
@@ -94,12 +133,11 @@ export async function POST(request) {
           status: 400,
         }
       )
-
     }
 
 
     // ========================================
-    // SUPABASE
+    // 5. SUPABASE
     // ========================================
 
     const supabase =
@@ -107,7 +145,7 @@ export async function POST(request) {
 
 
     // ========================================
-    // GET ROADMAP + CAREER
+    // 6. GET ROADMAP + CAREER
     // ========================================
 
     const {
@@ -138,7 +176,6 @@ export async function POST(request) {
       roadmapError ||
       !roadmap
     ) {
-
       console.error(
         "Roadmap error:",
         roadmapError
@@ -155,7 +192,6 @@ export async function POST(request) {
           status: 404,
         }
       )
-
     }
 
 
@@ -164,7 +200,7 @@ export async function POST(request) {
 
 
     // ========================================
-    // CLEAN TRANSCRIPT
+    // 7. CLEAN TRANSCRIPT
     // ========================================
 
     const cleanTranscript =
@@ -179,7 +215,6 @@ export async function POST(request) {
     if (
       cleanTranscript.length === 0
     ) {
-
       return Response.json(
         {
           success: false,
@@ -190,12 +225,11 @@ export async function POST(request) {
           status: 400,
         }
       )
-
     }
 
 
     // ========================================
-    // FORMAT TRANSCRIPT
+    // 8. FORMAT TRANSCRIPT
     // ========================================
 
     const formattedTranscript =
@@ -215,7 +249,7 @@ export async function POST(request) {
 
 
     // ========================================
-    // PROMPT
+    // 9. PROMPT
     // ========================================
 
     const prompt = `
@@ -415,7 +449,7 @@ Use exactly this structure:
 
 
     // ========================================
-    // GEMINI GENERATION
+    // 10. GEMINI GENERATION
     // ========================================
 
     const response =
@@ -441,7 +475,7 @@ Use exactly this structure:
 
 
     // ========================================
-    // GET RESPONSE TEXT
+    // 11. GET RESPONSE TEXT
     // ========================================
 
     const text =
@@ -449,23 +483,20 @@ Use exactly this structure:
 
 
     if (!text) {
-
       throw new Error(
         "Gemini returned an empty response."
       )
-
     }
 
 
     // ========================================
-    // PARSE JSON
+    // 12. PARSE JSON
     // ========================================
 
     let evaluation
 
 
     try {
-
       evaluation =
         JSON.parse(text)
 
@@ -480,12 +511,11 @@ Use exactly this structure:
       throw new Error(
         "AI returned an invalid interview evaluation."
       )
-
     }
 
 
     // ========================================
-    // VALIDATE SCORE VALUES
+    // 13. VALIDATE SCORE VALUES
     // ========================================
 
     const scores = [
@@ -524,12 +554,11 @@ Use exactly this structure:
       throw new Error(
         "AI returned invalid interview scores."
       )
-
     }
 
 
     // ========================================
-    // CALCULATE TOTAL OURSELVES
+    // 14. CALCULATE TOTAL OURSELVES
     // ========================================
 
     const calculatedTotal =
@@ -541,7 +570,7 @@ Use exactly this structure:
 
 
     // ========================================
-    // CLEAN FEEDBACK
+    // 15. CLEAN FEEDBACK
     // ========================================
 
     const feedback = {
@@ -620,7 +649,7 @@ Use exactly this structure:
 
 
     // ========================================
-    // SAVE TO SUPABASE
+    // 16. SAVE TO SUPABASE
     // ========================================
 
     const {
@@ -658,7 +687,7 @@ Use exactly this structure:
 
 
     // ========================================
-    // SAVE ERROR
+    // 17. SAVE ERROR
     // ========================================
 
     if (saveError) {
@@ -672,12 +701,11 @@ Use exactly this structure:
       throw new Error(
         "Interview was evaluated but could not be saved."
       )
-
     }
 
 
     // ========================================
-    // SUCCESS RESPONSE
+    // 18. SUCCESS RESPONSE
     // ========================================
 
     return Response.json({
@@ -744,5 +772,4 @@ Use exactly this structure:
     )
 
   }
-
 }

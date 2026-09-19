@@ -2,14 +2,21 @@ import { auth } from "@clerk/nextjs/server"
 import { GoogleGenAI } from "@google/genai"
 
 import { createServerSupabaseClient } from "@/lib/supabase/server"
+import { checkFeatureLimit } from "@/lib/billings/check-limit"
+
 
 const ai = new GoogleGenAI({
   apiKey: process.env.GEMINI_API_KEY,
 })
 
 
+// ============================================================
+// POST — EVALUATE ASSESSMENT
+// ============================================================
+
 export async function POST(request) {
   try {
+
     // ==========================================
     // 1. AUTH
     // ==========================================
@@ -30,7 +37,41 @@ export async function POST(request) {
 
 
     // ==========================================
-    // 2. REQUEST BODY
+    // 2. CHECK ASSESSMENT PLAN LIMIT
+    // ==========================================
+
+    const access = await checkFeatureLimit({
+      userId,
+      feature: "assessments",
+    })
+
+
+    if (!access.allowed) {
+      return Response.json(
+        {
+          success: false,
+
+          code: "PLAN_LIMIT_REACHED",
+
+          error:
+            "Your current plan has reached its assessment limit.",
+
+          billing: {
+            plan: access.plan,
+            usage: access.usage,
+            limit: access.limit,
+            remaining: access.remaining,
+          },
+        },
+        {
+          status: 403,
+        }
+      )
+    }
+
+
+    // ==========================================
+    // 3. REQUEST BODY
     // ==========================================
 
     const body = await request.json()
@@ -67,7 +108,8 @@ export async function POST(request) {
       return Response.json(
         {
           success: false,
-          error: "All assessment sections must be completed",
+          error:
+            "All assessment sections must be completed",
         },
         {
           status: 400,
@@ -77,7 +119,7 @@ export async function POST(request) {
 
 
     // ==========================================
-    // 3. SUPABASE
+    // 4. SUPABASE
     // ==========================================
 
     const supabase =
@@ -85,7 +127,7 @@ export async function POST(request) {
 
 
     // ==========================================
-    // 4. FETCH CAREER GOAL
+    // 5. FETCH CAREER GOAL
     // ==========================================
 
     const {
@@ -119,7 +161,7 @@ export async function POST(request) {
 
 
     // ==========================================
-    // 5. BUILD GEMINI PROMPT
+    // 6. BUILD GEMINI PROMPT
     // ==========================================
 
     const prompt = `
@@ -237,7 +279,7 @@ Use exactly this structure:
 
 
     // ==========================================
-    // 6. GEMINI EVALUATION
+    // 7. GEMINI EVALUATION
     // ==========================================
 
     const response =
@@ -247,7 +289,8 @@ Use exactly this structure:
         contents: prompt,
 
         config: {
-          responseMimeType: "application/json",
+          responseMimeType:
+            "application/json",
         },
       })
 
@@ -267,7 +310,7 @@ Use exactly this structure:
 
 
     // ==========================================
-    // 7. VALIDATE SCORES
+    // 8. VALIDATE SCORES
     // ==========================================
 
     const normalizeScore = (score) => {
@@ -304,7 +347,7 @@ Use exactly this structure:
 
 
     // ==========================================
-    // 8. SERVER CALCULATES TOTAL
+    // 9. SERVER CALCULATES TOTAL
     // ==========================================
 
     const totalScore =
@@ -314,7 +357,7 @@ Use exactly this structure:
 
 
     // ==========================================
-    // 9. STATUS
+    // 10. STATUS
     // ==========================================
 
     const status =
@@ -324,35 +367,42 @@ Use exactly this structure:
 
 
     // ==========================================
-    // 10. CLEAN FEEDBACK
+    // 11. CLEAN FEEDBACK
     // ==========================================
 
     const feedback = {
       question: {
         score: questionScore,
         feedback:
-          evaluation.question?.feedback || "",
+          evaluation.question?.feedback ||
+          "",
       },
 
       scenario: {
         score: scenarioScore,
         feedback:
-          evaluation.scenario?.feedback || "",
+          evaluation.scenario?.feedback ||
+          "",
       },
 
       practical: {
         score: practicalScore,
         feedback:
-          evaluation.practical?.feedback || "",
+          evaluation.practical?.feedback ||
+          "",
       },
 
       strengths:
-        Array.isArray(evaluation.strengths)
+        Array.isArray(
+          evaluation.strengths
+        )
           ? evaluation.strengths
           : [],
 
       weakAreas:
-        Array.isArray(evaluation.weakAreas)
+        Array.isArray(
+          evaluation.weakAreas
+        )
           ? evaluation.weakAreas
           : [],
 
@@ -362,7 +412,7 @@ Use exactly this structure:
 
 
     // ==========================================
-    // 11. SAVE RESULT
+    // 12. SAVE RESULT
     // ==========================================
 
     const {
@@ -407,7 +457,7 @@ Use exactly this structure:
 
 
     // ==========================================
-    // 12. RETURN RESULT
+    // 13. RETURN RESULT
     // ==========================================
 
     return Response.json({

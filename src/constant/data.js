@@ -80,3 +80,29 @@ export const plans = [
     ],
   },
 ]
+
+
+export const EMPTY_CV_PROFILE = {
+  fullName: "",
+  email: "",
+  imageUrl: null,
+
+  phone: "",
+  location: "",
+
+  linkedinUrl: "",
+  githubUrl: "",
+  portfolioUrl: "",
+
+  education: [],
+  experience: [],
+  projects: [],
+  certifications: [],
+}
+
+
+export const CV_ENDPOINTS = {
+  data: "/api/cv/data",
+  profile: "/api/cv/profile",
+  pdf: "/api/cv/pdf",
+}

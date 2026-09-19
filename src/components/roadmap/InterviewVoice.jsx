@@ -17,6 +17,7 @@ import {
 
 import {Lottie} from "lottie-react"
 import EvaluatingInterview from "./EvaluatingInterview"
+import InterviewResult from "./InterviewResult"
 
 import vapi from "@/lib/vapi/vapi"
 import { configureAssistant2 } from "@/lib/utils"
