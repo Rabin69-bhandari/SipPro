@@ -19,7 +19,7 @@ const DashboardClientWrapper = ({ children }) => {
         <AppSidebar />
 
         <main className='flex flex-col w-full '>
-          <header className='flex w-full border-b min-h-15 items-center justify-between px-10'>
+          <header className='flex sticky top-0 z-100 bg-blue-50 w-full border-b min-h-15 items-center justify-between px-10'>
             {!isMobile && <SidebarTrigger />}
 
             <UserButton />

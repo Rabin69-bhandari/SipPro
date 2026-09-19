@@ -2,13 +2,13 @@ export const PLAN_LIMITS = {
   free: {
     roadmaps: 1,
     assessments: 1,
-    interviews: 1,
+    interviews: 0,
   },
 
   pro: {
     roadmaps: 5,
     assessments: Infinity,
-    interviews: 10,
+    interviews: 2,
   },
 
   career_plus: {

@@ -170,6 +170,7 @@ const JourneySection = () => {
     <section
       id="journey"
       className="
+      journey-section
         relative
         overflow-hidden
         bg-background
@@ -181,28 +182,7 @@ const JourneySection = () => {
 
       {/* DECORATIVE ROBOT */}
 
-      <Image
-        src="/images/robot.png"
-        alt=""
-        width={300}
-        height={300}
-        aria-hidden="true"
-        className="
-          pointer-events-none
-          absolute
-          -left-25!
-          bottom-12
-          hidden
-          h-auto
-          w-[210px]
-          rotate-[30deg]!
-          object-contain
-          opacity-90
-          lg:block
-          xl:-right-10
-          xl:w-[235px]
-        "
-      />
+
 
       <div
         className="

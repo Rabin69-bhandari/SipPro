@@ -1,107 +1,11 @@
+"use client"
+import { Cell, Pie, PieChart, ResponsiveContainer } from "recharts"
 import { Trophy } from "lucide-react"
-
-
-export default function ReadinessCard({
-  readiness,
-}) {
-  return (
-    <div className="rounded-2xl border border-border bg-card p-6 md:p-8">
-
-      <div className="flex items-center justify-between">
-
-        <div>
-
-          <p className="text-sm font-medium">
-            Career Readiness
-          </p>
-
-          <p className="mt-1 text-xs text-muted-foreground">
-            Based on your current evidence
-          </p>
-
-        </div>
-
-        <Trophy className="size-5 text-primary" />
-
-      </div>
-
-
-      <div className="my-7 flex items-end gap-2">
-
-        <span className="text-6xl font-semibold tracking-tight">
-          {readiness?.score ?? 0}
-        </span>
-
-        <span className="mb-2 text-lg text-muted-foreground">
-          %
-        </span>
-
-      </div>
-
-
-      <div className="space-y-4">
-
-        <ProgressRow
-          label="Learning"
-          value={readiness?.learning ?? 0}
-        />
-
-        <ProgressRow
-          label="Assessment"
-          value={readiness?.assessment ?? 0}
-        />
-
-        <ProgressRow
-          label="Interview"
-          value={readiness?.interview}
-          unavailable={
-            readiness?.interview == null
-          }
-        />
-
-      </div>
-
-    </div>
-  )
-}
-
-
-function ProgressRow({
-  label,
-  value,
-  unavailable = false,
-}) {
-  return (
-    <div>
-
-      <div className="mb-2 flex items-center justify-between text-xs">
-
-        <span className="text-muted-foreground">
-          {label}
-        </span>
-
-        <span className="font-medium">
-          {unavailable
-            ? "Not completed"
-            : `${value}%`}
-        </span>
-
-      </div>
-
-
-      <div className="h-1.5 overflow-hidden rounded-full bg-secondary">
-
-        <div
-          className="h-full rounded-full bg-primary transition-all duration-700"
-          style={{
-            width: unavailable
-              ? "0%"
-              : `${value}%`,
-          }}
-        />
-
-      </div>
-
-    </div>
-  )
+export default function ReadinessCard({ readiness }) {
+ const score=Math.max(0,Math.min(100,readiness?.score ?? 0)); const data=[{v:score},{v:100-score}]
+ return <section className="rounded-2xl border border-border bg-card p-6 shadow-sm shadow-black/[0.02]">
+  <div className="flex items-center justify-between"><div><h2 className="font-semibold">Career Readiness</h2><p className="mt-1 text-xs text-muted-foreground">Overall evidence score</p></div><Trophy className="size-5 text-primary" /></div>
+  <div className="relative mx-auto mt-3 h-48 max-w-56"><ResponsiveContainer width="100%" height="100%"><PieChart><Pie data={data} dataKey="v" startAngle={90} endAngle={-270} innerRadius="72%" outerRadius="94%" stroke="none"><Cell fill="var(--chart-1)"/><Cell fill="var(--secondary)"/></Pie></PieChart></ResponsiveContainer><div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center"><span className="text-4xl font-semibold tracking-tight">{score}%</span><span className="mt-1 text-xs text-muted-foreground">ready</span></div></div>
+  <p className="text-center text-xs leading-5 text-muted-foreground">Built from learning, assessment and interview evidence.</p>
+ </section>
 }

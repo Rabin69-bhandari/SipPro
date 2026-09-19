@@ -1,11 +1,58 @@
 import Image from "next/image";
 import Link from "next/link";
 
+import gsap from "gsap";
+import { useGSAP } from "@gsap/react";
+import SplitText from "gsap/SplitText";
+
+
+gsap.registerPlugin(SplitText)
+
 const HeroSection = () => {
+
+
+  useGSAP(()=>{
+    gsap.from('.robot',{
+      
+      opacity : 0,
+      delay : 0.2
+    })
+
+    gsap.from('.btn',{
+      y : '20%',
+      opacity : 0
+
+    })
+
+    SplitText.create('h1',{
+      type : 'chars',
+      onSplit(self){
+        gsap.from(self.chars,{
+          scale : 1.3,
+          opacity : 0,
+          stagger : 0.035,
+          duration :0.1,
+          ease : 'power3.out',
+        
+        })
+      }
+    })
+
+    gsap.from('p',{
+      y : '20%',
+      opacity : 0,
+      delay : 0.5
+
+    })
+
+  })
+
+
+   
   return (
     <section
       id="home"
-      className="relative min-h-screen overflow-hidden bg-surface-soft pt-20"
+      className="relative min-h-screen  bg-surface-soft pt-20"
     >
       <div className="mx-auto grid min-h-[calc(100vh-80px)] max-w-[1400px] grid-cols-1 items-center gap-8 px-5 pb-16 sm:px-8 lg:grid-cols-2 lg:px-12 xl:px-14">
 
@@ -61,7 +108,7 @@ const HeroSection = () => {
           </p>
 
           {/* BUTTONS */}
-          <div className="mt-8 flex flex-col justify-center gap-3.5 sm:flex-row lg:justify-start">
+          <div className="btn mt-8 flex flex-col justify-center gap-3.5 sm:flex-row lg:justify-start">
 
             <Link
               href="/sign-up"
@@ -160,8 +207,9 @@ const HeroSection = () => {
             height={700}
             priority
             className="
+              robot
               relative
-              z-10
+              z-[100]!
               h-auto
               w-full
               max-w-[420px]

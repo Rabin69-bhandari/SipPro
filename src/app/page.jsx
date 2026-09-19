@@ -3,29 +3,31 @@
 
 
 import LandingPage from "@/components/Landing/LandingPage";
-import { useUser,UserButton,Show } from "@clerk/nextjs";
+import { useUser, UserButton, Show } from "@clerk/nextjs";
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
+import SmoothScrolling from "@/components/Landing/SmoothScrolling";
+
 export default function Home() {
 
-  const {user,isLoaded} = useUser()
+  const { user, isLoaded } = useUser()
   const router = useRouter()
 
 
   useEffect(() => {
-    if(isLoaded && user){
+    if (isLoaded && user) {
       router.replace("/home")
     }
-  }, [user,router,isLoaded])
+  }, [user, router, isLoaded])
 
 
-  if(!isLoaded){
+  if (!isLoaded) {
     return <h2>Loading......</h2>
   }
 
-  if(user){
+  if (user) {
     return null
   }
 
@@ -33,9 +35,12 @@ export default function Home() {
 
   return (
     <>
-     <LandingPage />
-    
-      
+      <SmoothScrolling>
+
+        <LandingPage />
+      </SmoothScrolling>
+
+
     </>
   );
 }

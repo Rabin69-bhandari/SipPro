@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { usePathname } from "next/navigation"
 import Link from "next/link"
+import Image from "next/image"
 
 import {
   Sidebar,
@@ -122,7 +123,6 @@ function CollapsibleMenuItem({ item, collapsed }) {
   if (collapsed) {
     return (
       <SidebarMenuItem className="flex w-full items-center justify-center">
-
         <SidebarMenuButton
           tooltip={item.title}
           className="flex h-11 w-full items-center justify-center p-0"
@@ -141,7 +141,6 @@ function CollapsibleMenuItem({ item, collapsed }) {
             </Link>
           }
         />
-
       </SidebarMenuItem>
     )
   }
@@ -153,10 +152,8 @@ function CollapsibleMenuItem({ item, collapsed }) {
 
   return (
     <SidebarMenuItem>
-
       {hasSubItems ? (
         <>
-
           <SidebarMenuButton
             className={cn(
               "h-12 w-full rounded-xl px-3 transition-colors duration-200",
@@ -166,16 +163,13 @@ function CollapsibleMenuItem({ item, collapsed }) {
                 : "text-muted-foreground"
             )}
           >
-
             <div
               onClick={handleToggle}
               className="flex h-full w-full cursor-pointer items-center gap-4"
             >
-
               <item.icon className="size-6 shrink-0" />
 
               <span className="flex w-full items-center justify-between text-[16px] font-medium">
-
                 {item.title}
 
                 {isOpen ? (
@@ -183,84 +177,66 @@ function CollapsibleMenuItem({ item, collapsed }) {
                 ) : (
                   <ChevronRight className="size-5 shrink-0" />
                 )}
-
               </span>
-
             </div>
-
           </SidebarMenuButton>
 
 
+          {/* SUB MENU */}
+
           {isOpen && (
             <div className="ml-6 mt-2 space-y-2 border-l border-sidebar-border pl-4">
+              {item.subitems.map((subitem) => (
+                <SidebarMenuButton
+                  key={subitem.title}
+                  render={
+                    <Link
+                      href={subitem.href}
+                      className={cn(
+                        "flex h-11 w-full items-center gap-3 rounded-lg px-3 text-[15px] transition-colors duration-200",
+                        "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+                        isActive(subitem.href)
+                          ? "bg-secondary font-medium text-secondary-foreground"
+                          : "text-muted-foreground"
+                      )}
+                    >
+                      <subitem.icon className="size-5 shrink-0" />
 
-              {item.subitems.map(
-                (subitem) => (
-                  <SidebarMenuButton
-                    key={subitem.title}
-                    render={
-                      <Link
-                        href={subitem.href}
-                        className={cn(
-                          "flex h-11 w-full items-center gap-3 rounded-lg px-3 text-[15px]",
-                          "transition-colors duration-200",
-                          "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
-                          isActive(
-                            subitem.href
-                          )
-                            ? "bg-secondary font-medium text-secondary-foreground"
-                            : "text-muted-foreground"
-                        )}
-                      >
-
-                        <subitem.icon className="size-5 shrink-0" />
-
-                        <span>
-                          {subitem.title}
-                        </span>
-
-                      </Link>
-                    }
-                  />
-                )
-              )}
-
+                      <span>
+                        {subitem.title}
+                      </span>
+                    </Link>
+                  }
+                />
+              ))}
             </div>
           )}
-
         </>
       ) : (
-
         <SidebarMenuButton
           render={
             <Link
               href={item.href}
               className={cn(
-                "flex h-12 w-full items-center gap-4 rounded-xl px-3",
-                "transition-colors duration-200",
+                "flex h-12 w-full items-center gap-4 rounded-xl px-3 transition-colors duration-200",
                 "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
                 isParentActive()
                   ? "bg-sidebar-primary text-sidebar-primary-foreground"
                   : "text-muted-foreground"
               )}
             >
-
               <item.icon className="size-6 shrink-0" />
 
               <span className="text-[16px] font-medium">
                 {item.title}
               </span>
-
             </Link>
           }
         />
-
       )}
-
     </SidebarMenuItem>
   )
 }
-
 
 
 // ─────────────────────────────────────────────
@@ -268,7 +244,6 @@ function CollapsibleMenuItem({ item, collapsed }) {
 // ─────────────────────────────────────────────
 
 export function AppSidebar() {
-
   const {
     state,
     openMobile,
@@ -287,7 +262,6 @@ export function AppSidebar() {
   // ─────────────────────────────────────────
 
   useEffect(() => {
-
     const checkMobile = () => {
       setIsMobile(
         window.innerWidth < 765
@@ -307,13 +281,11 @@ export function AppSidebar() {
         checkMobile
       )
     }
-
   }, [])
 
 
   return (
     <>
-
       {/* MOBILE OVERLAY */}
 
       {openMobile && (
@@ -333,7 +305,7 @@ export function AppSidebar() {
           onClick={() =>
             setOpenMobile(true)
           }
-          className="fixed bottom-5 left-5 z-50 flex size-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-opacity hover:opacity-90 md:hidden"
+          className="fixed bottom-5 left-5 z-50 flex size-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-all duration-200 hover:scale-105 hover:opacity-90 md:hidden"
           aria-label="Open menu"
         >
           <Menu className="size-6" />
@@ -348,84 +320,82 @@ export function AppSidebar() {
         className="z-50 flex flex-col overflow-hidden border-r border-sidebar-border bg-sidebar text-sidebar-foreground"
       >
 
-
         {/* ───────────────────────────── */}
         {/* HEADER */}
         {/* ───────────────────────────── */}
 
         <SidebarHeader
           className={cn(
-            "w-full shrink-0 border-b border-sidebar-border py-4 transition-[padding] duration-200",
+            "w-full flex items-center justify-center shrink-0 border-b border-sidebar-border transition-[padding] duration-200",
             collapsed
-              ? "px-1"
-              : "px-3"
+              ? "px-1 py-4"
+              : "px-4 py-4"
           )}
         >
-
           <div
             className={cn(
-              "flex w-full items-center",
+              "flex items-center justify-center  h-11 w-full items-center",
               collapsed
                 ? "justify-center"
-                : "gap-3"
+                : "justify-between"
             )}
           >
 
-            {/* SIP LOGO */}
+            {/* LEARNCHEN WORDMARK */}
 
             <Link
               href="/home"
-              className="flex shrink-0 items-center justify-center"
+              aria-label="LearnChen Home"
+              className={cn(
+                "flex h-full  w-full justify-center items-center  min-w-0 items-center",
+                collapsed
+                  ? "justify-center"
+                  : "gap-1.5"
+              )}
             >
 
-              <div
+              {/* BRAND NAME */}
+
+              {!collapsed && (
+                <span className="whitespace-nowrap text-[22px] font-semibold leading-none tracking-[-0.03em] text-primary">
+                  LearnChen
+                </span>
+              )}
+
+
+              {/* LEAF */}
+
+              <Image
+                src="/images/mdi_leaf.png"
+                alt=""
+                aria-hidden="true"
+                width={30}
+                height={30}
+                priority
                 className={cn(
-                  "flex shrink-0 items-center justify-center rounded-xl bg-primary font-bold text-primary-foreground transition-all duration-200",
+                  "shrink-0 object-contain transition-[width,height] duration-200",
                   collapsed
-                    ? "size-10 text-sm"
-                    : "size-11 text-base"
+                    ? "h-[30px] w-[30px]"
+                    : "h-[25px] w-[25px]"
                 )}
-              >
-                S
-              </div>
-
+              />
             </Link>
-
-
-            {/* BRAND */}
-
-            {!collapsed && (
-              <div className="min-w-0 flex-1">
-
-                <h2 className="truncate text-xl font-semibold tracking-tight text-foreground">
-                  Sip
-                </h2>
-
-                <p className="mt-0.5 truncate text-sm text-muted-foreground">
-                  Prove what you know
-                </p>
-
-              </div>
-            )}
 
 
             {/* MOBILE CLOSE */}
 
-            {!collapsed &&
-              isMobile && (
-                <button
-                  onClick={() =>
-                    setOpenMobile(false)
-                  }
-                  className="ml-auto flex size-9 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground md:hidden"
-                  aria-label="Close menu"
-                >
-                  <X className="size-5" />
-                </button>
-              )}
-
+            {!collapsed && isMobile && (
+              <button
+                onClick={() =>
+                  setOpenMobile(false)
+                }
+                className="ml-auto flex size-9 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors duration-200 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground md:hidden"
+                aria-label="Close menu"
+              >
+                <X className="size-5" />
+              </button>
+            )}
           </div>
-
         </SidebarHeader>
 
 
@@ -441,8 +411,9 @@ export function AppSidebar() {
               : "px-3"
           )}
         >
-
           <SidebarGroup className="w-full p-0">
+
+            {/* SECTION TITLE */}
 
             {!collapsed && (
               <p className="mb-4 px-3 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
@@ -451,31 +422,19 @@ export function AppSidebar() {
             )}
 
 
-            <SidebarMenu
-              className={cn(
-                "w-full",
-                collapsed
-                  ? "space-y-3"
-                  : "space-y-3"
-              )}
-            >
+            {/* MENU */}
 
-              {navItems.map(
-                (item) => (
-                  <CollapsibleMenuItem
-                    key={item.title}
-                    item={item}
-                    collapsed={
-                      collapsed
-                    }
-                  />
-                )
-              )}
-
+            <SidebarMenu className="w-full space-y-3">
+              {navItems.map((item) => (
+                <CollapsibleMenuItem
+                  key={item.title}
+                  item={item}
+                  collapsed={collapsed}
+                />
+              ))}
             </SidebarMenu>
 
           </SidebarGroup>
-
         </SidebarContent>
 
 
@@ -491,7 +450,6 @@ export function AppSidebar() {
               : "px-3"
           )}
         >
-
           <div
             className={cn(
               "flex w-full flex-col gap-2",
@@ -499,48 +457,38 @@ export function AppSidebar() {
                 "items-center"
             )}
           >
+            {footerItems?.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                title={
+                  collapsed
+                    ? item.title
+                    : undefined
+                }
+                className={cn(
+                  "flex h-12 items-center rounded-xl text-muted-foreground transition-colors duration-200",
+                  "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+                  collapsed
+                    ? "w-11 justify-center px-0"
+                    : "w-full gap-4 px-3"
+                )}
+              >
+                <div className="flex shrink-0 items-center justify-center [&>svg]:size-6">
+                  {item.icons}
+                </div>
 
-            {footerItems?.map(
-              (item) => (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  title={
-                    collapsed
-                      ? item.title
-                      : undefined
-                  }
-                  className={cn(
-                    "flex h-12 items-center rounded-xl text-muted-foreground",
-                    "transition-colors duration-200",
-                    "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
-
-                    collapsed
-                      ? "w-11 justify-center px-0"
-                      : "w-full gap-4 px-3"
-                  )}
-                >
-
-                  <div className="flex shrink-0 items-center justify-center [&>svg]:size-6">
-                    {item.icons}
-                  </div>
-
-                  {!collapsed && (
-                    <span className="text-[16px] font-medium">
-                      {item.title}
-                    </span>
-                  )}
-
-                </Link>
-              )
-            )}
-
+                {!collapsed && (
+                  <span className="text-[16px] font-medium">
+                    {item.title}
+                  </span>
+                )}
+              </Link>
+            ))}
           </div>
-
         </SidebarFooter>
 
       </Sidebar>
-
     </>
   )
 }

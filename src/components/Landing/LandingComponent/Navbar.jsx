@@ -3,6 +3,11 @@
 import Link from "next/link";
 import { useState } from "react";
 
+import gsap from "gsap";
+import { useGSAP } from "@gsap/react";
+
+
+
 const navLinks = [
   { label: "Home", href: "#home" },
   { label: "Services", href: "#services" },
@@ -13,6 +18,14 @@ const navLinks = [
 
 const Navbar = () => {
   const [menuOpen, setMenuOpen] = useState(false);
+
+
+  useGSAP(() => {
+    gsap.from('header',{
+      y : '-25%',
+      opacity : 0
+    })
+  })
 
   return (
     <header

@@ -8,8 +8,43 @@ const roadmapSchema = {
   type: "object",
 
   properties: {
-    title: { type: "string" },
-    description: { type: "string" },
+    // =========================================================
+    // ROADMAP BASIC INFO
+    // =========================================================
+
+    title: {
+      type: "string",
+    },
+
+    description: {
+      type: "string",
+    },
+
+    // =========================================================
+    // ROADMAP VISUAL TYPE
+    // Used by frontend to choose the correct card image/sign
+    // =========================================================
+
+    type: {
+      type: "string",
+      enum: [
+        "coding",
+        "web",
+        "app",
+        "design",
+        "ai",
+        "data",
+        "math",
+        "cybersecurity",
+        "cloud",
+        "business",
+        "general",
+      ],
+    },
+
+    // =========================================================
+    // ROADMAP MODULES
+    // =========================================================
 
     modules: {
       type: "array",
@@ -18,10 +53,21 @@ const roadmapSchema = {
         type: "object",
 
         properties: {
-          id: { type: "string" },
-          title: { type: "string" },
-          description: { type: "string" },
-          estimatedHours: { type: "number" },
+          id: {
+            type: "string",
+          },
+
+          title: {
+            type: "string",
+          },
+
+          description: {
+            type: "string",
+          },
+
+          estimatedHours: {
+            type: "number",
+          },
 
           topics: {
             type: "array",
@@ -30,10 +76,21 @@ const roadmapSchema = {
               type: "object",
 
               properties: {
-                id: { type: "string" },
-                title: { type: "string" },
-                description: { type: "string" },
-                estimatedMinutes: { type: "number" },
+                id: {
+                  type: "string",
+                },
+
+                title: {
+                  type: "string",
+                },
+
+                description: {
+                  type: "string",
+                },
+
+                estimatedMinutes: {
+                  type: "number",
+                },
               },
 
               required: [
@@ -57,7 +114,12 @@ const roadmapSchema = {
     },
   },
 
-  required: ["title", "description", "modules"],
+  required: [
+    "title",
+    "description",
+    "type",
+    "modules",
+  ],
 }
 
 
@@ -79,7 +141,70 @@ Career objective: ${goal}
 Claimed skills: ${skills?.length ? skills.join(", ") : "None"}
 Study time: ${hoursPerWeek} hours per week.
 
-Rules:
+ROADMAP TYPE:
+
+Classify the roadmap into exactly ONE of these types:
+
+- coding
+- web
+- app
+- design
+- ai
+- data
+- math
+- cybersecurity
+- cloud
+- business
+- general
+
+Choose the type based primarily on the career being pursued.
+
+Examples:
+
+Frontend Developer -> web
+Full Stack Developer -> web
+Web Developer -> web
+
+Android Developer -> app
+iOS Developer -> app
+Flutter Developer -> app
+Mobile App Developer -> app
+
+UI/UX Designer -> design
+Product Designer -> design
+Graphic Designer -> design
+
+Java Developer -> coding
+C++ Developer -> coding
+Software Engineer -> coding
+
+AI Engineer -> ai
+Machine Learning Engineer -> ai
+NLP Engineer -> ai
+
+Data Scientist -> data
+Data Analyst -> data
+Data Engineer -> data
+
+Mathematician -> math
+Statistics-focused career -> math
+
+Cybersecurity Analyst -> cybersecurity
+Penetration Tester -> cybersecurity
+Security Engineer -> cybersecurity
+
+DevOps Engineer -> cloud
+Cloud Engineer -> cloud
+AWS Engineer -> cloud
+
+Business Analyst -> business
+Product Manager -> business
+
+If the career does not clearly match one of these categories,
+use "general".
+
+ROADMAP RULES:
+
 - Personalize the roadmap to the user's experience and career goal.
 - Claimed skills are not verified skills.
 - Include necessary foundations.

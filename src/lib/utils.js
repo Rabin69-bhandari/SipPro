@@ -224,3 +224,99 @@ Do not start another question after concluding the interview.
     serverMessages: [],
   }
 }
+
+const ROADMAP_VISUALS = {
+  coding: {
+    label: "Programming",
+    image: "/images/roadmap/coding.png",
+    imageAlt: "Programming and software development illustration",
+    imagePosition: "center",
+  },
+
+  web: {
+    label: "Web Development",
+    image: "/images/roadmap/web.png",
+    imageAlt: "Web development and browser interface illustration",
+    imagePosition: "center",
+  },
+
+  app: {
+    label: "App Development",
+    image: "/images/roadmap/app.png",
+    imageAlt: "Mobile application development illustration",
+    imagePosition: "center",
+  },
+
+  design: {
+    label: "Design",
+    image: "/images/roadmap/design.png",
+    imageAlt: "Digital product and interface design illustration",
+    imagePosition: "center",
+  },
+
+  ai: {
+    label: "Artificial Intelligence",
+    image: "/images/roadmap/ai.png",
+    imageAlt: "Artificial intelligence and machine learning illustration",
+    imagePosition: "center",
+  },
+
+  data: {
+    label: "Data",
+    image: "/images/roadmap/data.png",
+    imageAlt: "Data analysis and visualization illustration",
+    imagePosition: "center",
+  },
+
+  math: {
+    label: "Mathematics",
+    image: "/images/roadmap/math.png",
+    imageAlt: "Mathematics and analytical thinking illustration",
+    imagePosition: "center",
+  },
+
+  cybersecurity: {
+    label: "Cybersecurity",
+    image: "/images/roadmap/cyber.png",
+    imageAlt: "Cybersecurity and digital protection illustration",
+    imagePosition: "center",
+  },
+
+  cloud: {
+    label: "Cloud & DevOps",
+    image: "/images/roadmap/cloud.png",
+    imageAlt: "Cloud computing and DevOps infrastructure illustration",
+    imagePosition: "center",
+  },
+
+  business: {
+    label: "Business",
+    image: "/images/roadmap/business.png",
+    imageAlt: "Business strategy and product management illustration",
+    imagePosition: "center",
+  },
+
+  general: {
+    label: "Career Path",
+    image: "/images/roadmap/general.png",
+    imageAlt: "Career learning journey illustration",
+    imagePosition: "center",
+  },
+}
+
+export function getRoadmapVisual(type) {
+  if (!type) {
+    return ROADMAP_VISUALS.general
+  }
+
+  const normalizedType = String(type)
+    .trim()
+    .toLowerCase()
+
+  return (
+    ROADMAP_VISUALS[normalizedType] ??
+    ROADMAP_VISUALS.general
+  )
+}
+
+export { ROADMAP_VISUALS }

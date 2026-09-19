@@ -49,6 +49,7 @@ export default function AIInterviewSection() {
     <section
       id="ai-interview"
       className="
+      ai-interview-section
         relative
         overflow-hidden
         bg-background
@@ -342,21 +343,6 @@ export default function AIInterviewSection() {
                       "
                     />
 
-                    <Image
-                      src="/images/robot.png"
-                      alt="LearnChen AI voice interviewer"
-                      width={220}
-                      height={220}
-                      className="
-                        relative
-                        z-10
-                        h-auto
-                        w-[145px]
-                        object-contain
-                        drop-shadow-[0_15px_25px_rgba(0,0,0,0.25)]
-                        sm:w-[165px]
-                      "
-                    />
 
                     {/* listening status */}
 
