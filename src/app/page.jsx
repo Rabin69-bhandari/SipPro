@@ -1,46 +1,56 @@
-'use client'
+"use client"
 
+import { useEffect } from "react"
+import { useRouter } from "next/navigation"
+import { useUser } from "@clerk/nextjs"
 
+import LandingPage from "@/components/Landing/LandingPage"
+import SmoothScrolling from "@/components/Landing/SmoothScrolling"
+import AppLoader from "@/components/ui/AppLoader"
 
-import LandingPage from "@/components/Landing/LandingPage";
-import { useUser, UserButton, Show } from "@clerk/nextjs";
-
-import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
-
-import SmoothScrolling from "@/components/Landing/SmoothScrolling";
 
 export default function Home() {
-
   const { user, isLoaded } = useUser()
   const router = useRouter()
 
+
+  // ============================================================
+  // AUTH REDIRECT
+  // ============================================================
 
   useEffect(() => {
     if (isLoaded && user) {
       router.replace("/home")
     }
-  }, [user, router, isLoaded])
+  }, [isLoaded, user, router])
 
+
+  // ============================================================
+  // CLERK LOADING
+  // ============================================================
 
   if (!isLoaded) {
-    return <h2>Loading......</h2>
+    return <AppLoader />
   }
+
+
+  // ============================================================
+  // AUTHENTICATED USER
+  // Keep loader visible while redirecting to /home
+  // ============================================================
 
   if (user) {
-    return null
+    return <AppLoader />
   }
 
 
+  // ============================================================
+  // LANDING PAGE
+  // ============================================================
 
   return (
-    <>
-      <SmoothScrolling>
-
-        <LandingPage />
-      </SmoothScrolling>
-
-
-    </>
-  );
+    <SmoothScrolling>
+      <LandingPage />
+    </SmoothScrolling>
+  )
 }
