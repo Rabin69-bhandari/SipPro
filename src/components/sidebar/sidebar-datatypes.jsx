@@ -64,8 +64,8 @@ const navItems = [
   },
 
   {
-    title: "Profile",
-    href: "/profile",
+    title: "Payment",
+    href: "/payment",
     icon: User,
   },
 
