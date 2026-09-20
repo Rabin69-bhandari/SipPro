@@ -54,7 +54,7 @@ export async function POST(request) {
     );
 
     const appUrl =
-      process.env.NEXT_PUBLIC_APP_URL;
+      process.env.APP_URL;
 
     const paymentData = {
       amount,
